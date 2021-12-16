@@ -4,13 +4,28 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project1-snake-game</title>
-    <link rel="stylesheet" href="./styles/snake.css">
+    <title>Worm Game</title>
+    <link rel="stylesheet" href="./styles/snake-game.css">
 </head>
 <body>
-    <div>
-        <canvas id="snake-canvas" height="800" width="800"></canvas>
+    <!-- Start Area -->
+    <div id="game-intro">
+        <h1>Snake Game</h1>
+        <p>Welcome to SnuggleTrouble's Snake Game</p>
+        <h2>How To Play</h2>
+        <p>You control a hungry Snake 
+        <br> Eat fruit and you'll grow in size 
+        <br> Control the worm with the arrow keys 
+        <br> The game ends if you collide with the walls or yourself.
+        </p>
+        <button class="startBtn">START</button>
     </div>
+    <!-- Game -->
+    <div id="game">
+        <canvas class="canvas" height="1000" width="1000"></canvas>
+    </div>
+    <!-- Scoreboard -->
+    
     <script src="./javascript/snake-canvas.js"></script>
     <script src="./javascript/snake-game.js"></script>
 </body>

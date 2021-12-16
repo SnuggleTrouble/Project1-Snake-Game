@@ -1,10 +1,17 @@
-const snakeCanvas = document.getElementById("snake-canvas");
+const startBtn = document.querySelector(".startBtn")
+const canvas = document.querySelector(".canvas");
 const context = snakeCanvas.getContext("2d");
 
 const gameBackground = "gray";
 const gameBorder = "black";
 const snakeColor = "orange";
 const snakeBorder = "red";
+
+/* create a class for the snake that will have collision with
+walls and itself.
+
+display absolute*/
+
 
 // the snake will be an array of objects that we can later add and remove segments from as the snake moves across the board to simulate movement.
 let snake = [
@@ -25,7 +32,7 @@ function drawSnakeSegments(snakeSegment) {
 function drawSnake() {
     snake.forEach(drawSnakeSegments);
 }
-// a function to move the snake. Should utilize the unshift() and pop() methods
+// a function to move the snake. Should utilize the push() and pop() methods
 function moveSnake() {};
 
 // a function that clears the game board and starts a new game.
