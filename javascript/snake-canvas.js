@@ -185,26 +185,31 @@ playAgainBtn.onclick = () => {
 
 document.addEventListener("keydown", event => {
     switch (event.keyCode) {
+// Arrow Controls
     case 38: // Arrow up
         snake.direction = {x: 0, y: - snake.w}
         break;
-    case 87: // W
-    snake.direction = {x: 0, y: - snake.w}
-        break;
+    
     case 40: // Arrow down
         snake.direction = {x: 0, y: snake.w}
         break;
-    case 83: // S
-    snake.direction = {x: 0, y: snake.w}
-        break;
+    
     case 37: // Arrow left
         snake.direction = {x: - snake.w, y: 0}
         break;
-    case 65: // A
-    snake.direction = {x: - snake.w, y: 0}
-        break;
+    
     case 39: // Arrow right
         snake.direction = {x: snake.w, y: 0}
+        break;
+// WASD Controls
+    case 87: // W
+        snake.direction = {x: 0, y: - snake.w}
+        break;
+    case 83: // S
+        snake.direction = {x: 0, y: snake.w}
+        break;
+    case 65: // A
+        snake.direction = {x: - snake.w, y: 0}
         break;
     case 68:
         snake.direction = {x: snake.w, y: 0}
