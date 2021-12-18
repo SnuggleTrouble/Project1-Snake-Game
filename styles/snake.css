@@ -1,0 +1,76 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: monospace;
+}
+
+.canvas {
+    background-color: aliceblue;
+    position: absolute;
+    visibility: hidden;
+}
+
+h1, h2, p {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 10px;
+}
+
+.startBtnContainer {
+    visibility: hidden;
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+    align-items: center;
+    position: absolute;
+    top: 125px;
+    left: 250px;
+    transform: translate(-50%, -50%);
+}
+
+.input {
+    padding: 5px 20px;
+    background-color: rgb(219, 219, 219);
+    border: none;
+    text-align: center;
+}
+
+.startBtn {
+    cursor: pointer;
+    z-index: 1;
+    background-color: rgba(42, 173, 145, 0.973);
+    color: white;
+    font-weight: 600;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    padding: 10px 25px;
+    border-radius: 5px;
+}
+
+.startBtn:hover {
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+}
+
+.scoreListContainer {
+    visibility: hidden;
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+    align-items: center;
+    position: absolute;
+    top: 125px;
+    left: 250px;
+    transform: translate(-50%, -50%);
+}
+
+.scoreList {
+  list-style: none;
+}
+
+.playAgainBtn {
+    padding: 5px 20px;
+}

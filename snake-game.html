@@ -4,29 +4,35 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Worm Game</title>
-    <link rel="stylesheet" href="./styles/snake-game.css">
+    <title>Snake Game</title>
+    <link rel="stylesheet" href="./styles/snake.css">
 </head>
 <body>
     <!-- Start Area -->
-    <div id="game-intro">
+    <div class="startBtnContainer">
         <h1>Snake Game</h1>
         <p>Welcome to SnuggleTrouble's Snake Game</p>
         <h2>How To Play</h2>
-        <p>You control a hungry Snake 
+        <p>You control a hungry Snake with the arrow keys or WASD.
         <br> Eat fruit and you'll grow in size 
         <br> Control the worm with the arrow keys 
         <br> The game ends if you collide with the walls or yourself.
         </p>
+        <input class="input" placeholder="Your Name" type="text">
         <button class="startBtn">START</button>
     </div>
     <!-- Game -->
-    <div id="game">
-        <canvas class="canvas" height="1000" width="1000"></canvas>
+    <div class="snakeGame">
+        <canvas class="canvas" height="300" width="500"></canvas>
     </div>
     <!-- Scoreboard -->
+    <div class="scoreListContainer">
+        <h1>SCORE</h1>
+        <ul class="scoreList">
+        </ul>
+        <button class="playAgainBtn">Play Again</button>
+    </div>
     
     <script src="./javascript/snake-canvas.js"></script>
-    <script src="./javascript/snake-game.js"></script>
 </body>
 </html>
