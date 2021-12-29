@@ -29,8 +29,8 @@ const scoreArray = JSON.parse(localStorage.getItem("scores"));
 const snake = {
     x: 50,
     y: 50,
-    w: 12,
-    h: 12,
+    w: 16,
+    h: 16,
     direction: {x: 0, y: 0},
     draw: function () {
         this.move();
@@ -199,19 +199,6 @@ document.addEventListener("keydown", event => {
         break;
     
     case 39: // Arrow right
-        snake.direction = {x: snake.w, y: 0}
-        break;
-// WASD Controls
-    case 87: // W
-        snake.direction = {x: 0, y: - snake.w}
-        break;
-    case 83: // S
-        snake.direction = {x: 0, y: snake.w}
-        break;
-    case 65: // A
-        snake.direction = {x: - snake.w, y: 0}
-        break;
-    case 68:
         snake.direction = {x: snake.w, y: 0}
         break;
     }
