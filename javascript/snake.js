@@ -7,39 +7,57 @@ const scoreList = document.querySelector(".scoreList");
 const input = document.querySelector(".input");
 
 const context = canvas.getContext("2d");
-context.font = "20px monospace";
 
-const gameBackground = "gray";
-const gameBorder = "black";
-const snakeColor = "orange";
-const snakeBorder = "red";
+/* const snakeColor = document.querySelector(".snake");
+const fruitColor = document.querySelector(".fruit"); */
+
+class SnakeSegment {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+}
 
 // gameScreen is either going to be start || game || score   HINT Visibility: visible || hidden
 let gameScreen = "start";
 
 // initial values of the game
 let name = "";
+let speed = 5;
 let timer = 0;
 let score = 0;
 let frames = 0;
+let numberOfTiles = 30;
+let tileSize = canvas.width / numberOfTiles - 2;
+const snakeSegments = [];
+let segmentLength = 2;
 
 // initial value of our score is grabbed from local storage
 const scoreArray = JSON.parse(localStorage.getItem("scores"));
 
 const snake = {
-    x: 50,
-    y: 50,
-    w: 16,
-    h: 16,
+    x: 15,
+    y: 15,
     direction: {x: 0, y: 0},
     draw: function () {
         this.move();
-        context.fillRect(this.x, this.y, this.w, this.h);
+
+        context.fillStyle = "green";
+        for (let i = 0; i < snakeSegments.length; i++) {
+            let segment = snakeSegments[i];
+            context.fillRect(segment.x * numberOfTiles, segment.y * numberOfTiles, tileSize, tileSize);
+        }
+        snakeSegments.push(new SnakeSegment(this.x, this.y)) // places a segment at the end of the array next to the snake head
+        if (snakeSegments.length > segmentLength) {
+            snakeSegments.shift(); // removes the farthest segment from the snake if it has more than the tail length.
+        }
+        context.fillStyle = "limegreen";
+        context.fillRect(this.x * numberOfTiles, this.y * numberOfTiles, tileSize, tileSize);
     },
     move: function () {
         this.x = this.x + this.direction.x;
         this.y = this.y + this.direction.y;
-        /* this.y %= canvas.height */
+        // this.y %= canvas.height
         if (this.x < 0) {
             this.x = canvas.width;
         } else if (this.x > canvas.width) {
@@ -52,16 +70,6 @@ const snake = {
         }
     }
 }
-
-// snake elements should be an array of objects that follow the snake's direction.
-// the snake should add and remove segments as the snake moves across the board to simulate movement.
-/* let snake = [
-    {x: 200, y: 200},
-    {x: 190, y: 200},
-    {x: 180, y: 200},
-    {x: 170, y: 200},
-    {x: 160, y: 200}
-]; */
 
 //create a class for the snake that will have collision with walls and itself.
 /* 
@@ -77,9 +85,23 @@ function drawSnakeSegments(snakeSegment) {
     snake.forEach(drawSnakeSegments);
 } */
 
-// a function to make the snake elements follow. Should utilize the push() and pop() methods
-/* function moveSnake() {}; */
 
+const fruit = {
+    x: 5,
+    y: 5,
+    draw: function () {
+        this.checkIfEaten();
+        context.fillStyle = "red";
+        context.fillRect(this.x * numberOfTiles, this.y * numberOfTiles, tileSize, tileSize)
+    },
+    checkIfEaten: function () {
+        if (this.x === snake.x && this.y === snake.y) {
+            this.x = Math.floor(Math.random() * numberOfTiles);
+            this.y = Math.floor(Math.random() * numberOfTiles);
+            segmentLength++;
+        }
+    }
+}
 
 // game loop
 setInterval(() => {
@@ -94,20 +116,21 @@ setInterval(() => {
             frames++;
             if (frames % 3 === 0) {
             context.clearRect(0, 0, canvas.width, canvas.height);
-            score++;
-            context.fillText(score, 15, 20);
+            /* score++;
+            context.fillText(score, 15, 20); */
             snake.draw();
+            fruit.draw();
             }
             
             // condition for stopping the game and returning to the score screen
-          /*   if (timer > 100) {
+            if (timer > 100) {
                 score = randomScore(100, 200);
                 scoreArray.push({name: name, score: score})
                 localStorage.setItem("scores", JSON.stringify(scoreArray));
                 //createItemScore(score, name);
                 createListScore(scoreArray);
                 gameScreen = "score"
-            } */
+            }
             break;
         // score screen
         case "score":
@@ -122,6 +145,7 @@ setInterval(() => {
 function gameReset() {
     timer = 0;
     score = 0;
+    speed = 5;
     gameScreen = "start";
 };
 
@@ -183,23 +207,27 @@ playAgainBtn.onclick = () => {
     gameReset();
 };
 
+// Snake Controls
 document.addEventListener("keydown", event => {
     switch (event.keyCode) {
-// Arrow Controls
-    case 38: // Arrow up
-        snake.direction = {x: 0, y: - snake.w}
+        case 38: // Arrow up
+        if (snake.direction.y === 1) break;
+        snake.direction = {x: 0, y: -1}
         break;
     
-    case 40: // Arrow down
-        snake.direction = {x: 0, y: snake.w}
+        case 40: // Arrow down
+        if (snake.direction.y === -1) break;
+        snake.direction = {x: 0, y: 1}
         break;
     
-    case 37: // Arrow left
-        snake.direction = {x: - snake.w, y: 0}
+        case 37: // Arrow left
+        if (snake.direction.x === 1) break;
+        snake.direction = {x: -1, y: 0}
         break;
     
-    case 39: // Arrow right
-        snake.direction = {x: snake.w, y: 0}
+        case 39: // Arrow right
+        if (snake.direction.x === -1) break;
+        snake.direction = {x: 1, y: 0}
         break;
     }
     console.log(event.keyCode)

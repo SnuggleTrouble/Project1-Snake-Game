@@ -2,20 +2,20 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: monospace;
 }
 
-.canvas {
-    background-color: aliceblue;
-    position: absolute;
-    visibility: hidden;
+/*Splash Screens*/
+
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background-color: antiquewhite;
 }
 
 h1, h2, p {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
     padding: 10px;
 }
 
@@ -26,7 +26,7 @@ h1, h2, p {
     flex-direction: column;
     align-items: center;
     position: absolute;
-    top: 125px;
+    top: 200px;
     left: 250px;
     transform: translate(-50%, -50%);
 }
@@ -87,3 +87,20 @@ h1, h2, p {
 .playAgainBtn:hover {
     box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
 }
+
+/*Game Board*/
+.canvas {
+    background-color: darkslategray;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+    visibility: hidden;
+}
+
+/* .snake {
+    background-color: limegreen;
+    border: .25vmin solid darkgreen;
+}
+
+.fruit {
+    background-color: darkred;
+    border: .25vmin solid black;
+} */
