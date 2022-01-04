@@ -24,11 +24,11 @@ let gameScreen = "start";
 // initial values of the game
 let name = "";
 let speed = 5;
-let timer = 0;
+/* let timer = 0; */
 let score = 0;
 let frames = 0;
-let numberOfTiles = 30;
-let tileSize = canvas.width / numberOfTiles - 2;
+let numberOfTiles = 20;
+let tileSize = canvas.width / numberOfTiles -2;
 const snakeSegments = [];
 let segmentLength = 2;
 
@@ -36,9 +36,10 @@ let segmentLength = 2;
 const scoreArray = JSON.parse(localStorage.getItem("scores"));
 
 const snake = {
-    x: 15,
-    y: 15,
+    x: 10,
+    y: 10,
     direction: {x: 0, y: 0},
+/*     previousDirection: {x: 0, y: 0}, */
     draw: function () {
         this.move();
 
@@ -48,7 +49,7 @@ const snake = {
             context.fillRect(segment.x * numberOfTiles, segment.y * numberOfTiles, tileSize, tileSize);
         }
         snakeSegments.push(new SnakeSegment(this.x, this.y)) // places a segment at the end of the array next to the snake head
-        if (snakeSegments.length > segmentLength) {
+        while (snakeSegments.length > segmentLength) {
             snakeSegments.shift(); // removes the farthest segment from the snake if it has more than the tail length.
         }
         context.fillStyle = "limegreen";
@@ -57,34 +58,10 @@ const snake = {
     move: function () {
         this.x = this.x + this.direction.x;
         this.y = this.y + this.direction.y;
-        // this.y %= canvas.height
-        if (this.x < 0) {
-            this.x = canvas.width;
-        } else if (this.x > canvas.width) {
-            this.x = 0;
-        }
-        if (this.y < 0) {
-            this.y = canvas.height;
-        } else if (this.y > canvas.height) {
-            this.y = 0;
-        }
-    }
-}
+    },
+};
 
-//create a class for the snake that will have collision with walls and itself.
-/* 
-function drawSnakeSegments(snakeSegment) {
-    context.fillStyle = "orange";
-    context.strokeStyle = "red";
-    context.fillRect(snakeSegment.x, snakeSegment.y, 10, 10);
-    context.strokeRect(snakeSegment.x, snakeSegment.y, 10, 10);
-    };
-    */
-
-/* function drawSnake() {
-    snake.forEach(drawSnakeSegments);
-} */
-
+//create a function for the snake that will have collision with walls and itself.
 
 const fruit = {
     x: 5,
@@ -99,7 +76,52 @@ const fruit = {
             this.x = Math.floor(Math.random() * numberOfTiles);
             this.y = Math.floor(Math.random() * numberOfTiles);
             segmentLength++;
+            score++;
         }
+    },
+    drawScore: function () {
+        context.fillStyle = "antiquewhite";
+        context.font = "10px Arial";
+        context.fillText("Score " + score, canvas.width - 50, 10);
+    }
+};
+
+function isGameOver(){
+    let gameOver = false;
+
+    if (snake.direction.x === 0 && snake.direction.y === 0) {
+        return false;
+    }
+
+    //Wall collision
+    if (snake.x <= 0) {
+        gameOver = true;
+    } else if (snake.x === numberOfTiles) {
+        gameOver = true;
+    } else if (snake.y < 0) {
+        gameOver = true;
+    } else if (snake.y === numberOfTiles) {
+        gameOver = true;
+    }
+
+    //Body collision
+    for (let i = 0; i < snakeSegments.length; i++) {
+        let segment = snakeSegments[i];
+        if (segment.x === snake.x && segment.y === snake.y) {
+            gameOver = true;
+            break;
+        }
+    }
+
+    if (gameOver) {
+        context.fillStyle = "white";
+        context.font = "50px Arial";
+        let gradient = context.createLinearGradient(0, 0, canvas.width, 0);
+        gradient.addColorStop("0", "orange");
+        gradient.addColorStop("0.5", "yellow");
+        gradient.addColorStop("1.0", "red");
+        context.fillStyle = gradient;
+        context.fillText("Game Over!", canvas.width / 6.5, canvas.height / 2);
     }
 }
 
@@ -113,22 +135,28 @@ setInterval(() => {
             break;
         // game screen
         case "game":
+            // Bug where the game over message is flashing on the screen due to the interval.
+            /* let result = isGameOver();
+            if (result){
+                document.removeEventListener("keydown", keyDown);
+                break;
+            } */
             frames++;
             if (frames % 3 === 0) {
             context.clearRect(0, 0, canvas.width, canvas.height);
-            /* score++;
-            context.fillText(score, 15, 20); */
+            
             snake.draw();
             fruit.draw();
+            fruit.drawScore();
             }
             
             // condition for stopping the game and returning to the score screen
-            if (timer > 100) {
-                score = randomScore(100, 200);
-                scoreArray.push({name: name, score: score})
+            if (score >= 10) {
+                // score = randomScore(100, 200);
+                /* scoreArray.push({name: name, score: score})
                 localStorage.setItem("scores", JSON.stringify(scoreArray));
-                //createItemScore(score, name);
-                createListScore(scoreArray);
+                createItemScore(score, name);
+                createListScore(scoreArray); */
                 gameScreen = "score"
             }
             break;
@@ -139,13 +167,14 @@ setInterval(() => {
         default:
         break;
     }
-}, 20);
+}, 30);
 
 // resetting the initial value of the game
 function gameReset() {
-    timer = 0;
+    /* timer = 0; */
     score = 0;
     speed = 5;
+    segmentLength = 2;
     gameScreen = "start";
 };
 
@@ -157,8 +186,7 @@ function randomScore(min, max) {
 // create a list element with the name and score
 function createItemScore(score, name) {
     const scoreItem = document.createElement("li");
-    // change innerHTML to something else. SECURITY RISK
-    scoreItem.textContent = `${name} ${score}`
+    scoreItem.textHTML = `${name} ${score}`
     scoreList.appendChild(scoreItem);
 };
 
@@ -205,6 +233,7 @@ startBtn.onclick = () => {
 // Restart button
 playAgainBtn.onclick = () => {
     gameReset();
+    canvas.style.visibility = "hidden";
 };
 
 // Snake Controls
@@ -231,4 +260,4 @@ document.addEventListener("keydown", event => {
         break;
     }
     console.log(event.keyCode)
-})
+});
