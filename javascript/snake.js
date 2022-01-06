@@ -8,8 +8,15 @@ const input = document.querySelector(".input");
 
 const context = canvas.getContext("2d");
 
+
+let bgMusic = new Audio();
+bgMusic.src = "./sounds/Chaoz-Fantasy-8-Bit.mp3";
 let chompSound = new Audio();
 chompSound.src = "./sounds/chomp.mp3";
+let gameOverSound = new Audio();
+gameOverSound.src = "./sounds/gameOver.mp3";
+let gameWon = new Audio();
+gameWon.src = "./sounds/gameWon.mp3";
 
 class SnakeSegment {
   constructor(x, y) {
@@ -101,7 +108,7 @@ function isGameWon() {
     return false;
   }
 
-  if (score >= 25) {
+  if (score >= 3) {
     gameWon = true;
   }
 
@@ -178,11 +185,19 @@ const gameLoop = setInterval(() => {
         snake.draw();
         fruit.draw();
         fruit.drawScore();
+        bgMusic.play();
       }
 
       // condition for stopping the game and returning to the score screen
-      if (isGameWon() || isGameOver()) {
+      if (isGameWon()) {
         gameScreen = "score";
+        bgMusic.pause();
+        gameWon.play();
+      }
+      if (isGameOver()) {
+        gameScreen = "score";
+        bgMusic.pause();
+        gameOverSound.play();
       }
       break;
     // score screen
