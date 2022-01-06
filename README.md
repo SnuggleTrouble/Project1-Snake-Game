@@ -18,16 +18,16 @@ The goal of the game is to reach the biggest possible size.
 # Backlog
 * Add scoreboard
 * Add sounds and music
-* 
+* Add art
 
 # Data Structure
 * Classes and methods definition. Or functions.
 
 # States y States Transitions
-* splashScreen
-* gameScreen
-* gameOverScreen
-* winScreen
+* splash Screen
+* game Screen
+* game Over Screen
+* win Screen
 
 # Task
 * Task definition in order of priority
@@ -38,7 +38,7 @@ The goal of the game is to reach the biggest possible size.
 
 # Git
 * https://github.com/SnuggleTrouble/Project1-Snake-Game
-* Link Deploy
+* https://snuggletrouble.github.io/Project1-Snake-Game/
 
 # Slides
-* Link Slides.com
+* https://docs.google.com/presentation/d/17BiFJELzmB3M2oBkBiwWrI0qq6xnm9Zrrd_w7DmjI8c/edit?usp=sharing
