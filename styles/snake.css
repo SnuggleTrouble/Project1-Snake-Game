@@ -14,11 +14,11 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    background-color: antiquewhite;
+    background: linear-gradient(130deg, #1CB5E0 0%, #000851 100%);
 }
 
 h1, h2, p {
-    padding: 10px;
+    padding: 5px;
 }
 
 .startBtnContainer {
@@ -28,9 +28,7 @@ h1, h2, p {
     flex-direction: column;
     align-items: center;
     position: absolute;
-    top: 200px;
-    left: 250px;
-    transform: translate(-50%, -50%);
+    top: 75px;
 }
 
 .input {
@@ -43,7 +41,8 @@ h1, h2, p {
 .startBtn {
     cursor: pointer;
     z-index: 1;
-    background-color: rgba(42, 173, 145, 0.973);
+    background: rgb(231,196,57);
+    background: radial-gradient(circle, rgba(231,196,57,1) 0%, rgba(250,118,46,1) 100%);
     color: white;
     font-weight: 600;
     border: none;
@@ -64,9 +63,7 @@ h1, h2, p {
     flex-direction: column;
     align-items: center;
     position: absolute;
-    top: 125px;
-    left: 250px;
-    transform: translate(-50%, -50%);
+    top: 75px;
 }
 
 .scoreList {
@@ -76,7 +73,8 @@ h1, h2, p {
 .playAgainBtn {
     cursor: pointer;
     z-index: 1;
-    background-color: rgba(224, 97, 24, 0.973);
+    background: rgb(231,196,57);
+    background: radial-gradient(circle, rgba(231,196,57,1) 0%, rgba(250,118,46,1) 100%);
     color: white;
     font-weight: 600;
     border: none;
@@ -92,17 +90,7 @@ h1, h2, p {
 
 /*Game Board*/
 .canvas {
-    background-color: darkslategray;
+    background: linear-gradient(330deg, #1CB5E0 0%, #000851 100%);
     box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
     visibility: hidden;
 }
-
-/* .snake {
-    background-color: limegreen;
-    border: .25vmin solid darkgreen;
-}
-
-.fruit {
-    background-color: darkred;
-    border: .25vmin solid black;
-} */

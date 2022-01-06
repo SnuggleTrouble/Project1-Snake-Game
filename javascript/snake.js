@@ -114,15 +114,15 @@ function isGameOver() {
     }
   }
 
+  // Game Over Text
   if (gameOver) {
-    context.fillStyle = "white";
     context.font = "50px Arial";
     let gradient = context.createLinearGradient(0, 0, canvas.width, 0);
     gradient.addColorStop("0", "orange");
     gradient.addColorStop("0.5", "yellow");
     gradient.addColorStop("1.0", "red");
     context.fillStyle = gradient;
-    context.fillText("Game Over!", canvas.width / 6.5, canvas.height / 2);
+    context.fillText("Game Over!", canvas.width / 3.6, canvas.height / 2);
   }
   return gameOver;
 }
@@ -153,7 +153,7 @@ const gameLoop = setInterval(() => {
       }
 
       // condition for stopping the game and returning to the score screen
-      if (score >= 100 || isGameOver()) {
+      if (score >= 300 || isGameOver()) {
         gameScreen = "score";
       }
       break;
@@ -164,7 +164,7 @@ const gameLoop = setInterval(() => {
     default:
       break;
   }
-}, 30);
+}, 25);
 
 // resetting the initial value of the game
 function gameReset() {
