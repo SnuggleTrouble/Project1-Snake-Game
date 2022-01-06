@@ -169,7 +169,6 @@ const gameLoop = setInterval(() => {
     case "start":
       startBtnContainer.style.visibility = "visible";
       scoreListContainer.style.visibility = "hidden";
-      document.removeEventListener("keydown", keyDown);
       break;
     // game screen
     case "game":
