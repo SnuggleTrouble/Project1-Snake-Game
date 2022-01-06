@@ -48,7 +48,7 @@ const snake = {
     while (snakeSegments.length > segmentLength) {
       snakeSegments.shift(); // removes the farthest segment from the snake if it has more than the tail length.
     }
-    context.fillStyle = "limegreen";
+    context.fillStyle = "darkgreen";
     context.fillRect(
       this.x * numberOfTiles,
       this.y * numberOfTiles,
@@ -97,7 +97,7 @@ function isGameWon() {
     return false;
   }
 
-  if (score >= 300) {
+  if (score >= 25) {
     gameWon = true;
   }
 
