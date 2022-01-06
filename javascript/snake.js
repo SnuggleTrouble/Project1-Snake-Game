@@ -23,13 +23,13 @@ let name = "";
 let score = 0;
 let frames = 0;
 let numberOfTiles = 20;
-let tileSize = 20;
+let tileSize = 20 -1;
 const snakeSegments = [];
 let segmentLength = 0;
 
 const snake = {
-  x: 10,
-  y: 10,
+  x: 15,
+  y: 15,
   direction: { x: 0, y: 0 },
   draw: function () {
     this.move();
@@ -63,8 +63,8 @@ const snake = {
 };
 
 const fruit = {
-  x: 5,
-  y: 5,
+  x: 7,
+  y: 7,
   draw: function () {
     this.checkIfEaten();
     context.fillStyle = "red";
@@ -153,7 +153,7 @@ const gameLoop = setInterval(() => {
       }
 
       // condition for stopping the game and returning to the score screen
-      if (score >= 15 || isGameOver()) {
+      if (score >= 100 || isGameOver()) {
         gameScreen = "score";
       }
       break;
@@ -170,10 +170,12 @@ const gameLoop = setInterval(() => {
 function gameReset() {
   score = 0;
   segmentLength = 0;
-  snake.x = 10;
-  snake.y = 10;
+  snake.x = 15;
+  snake.y = 15;
   snake.direction.x = 0;
   snake.direction.y = 0;
+  fruit.x = 7;
+  fruit.y = 7;
   gameScreen = "start";
 }
 
