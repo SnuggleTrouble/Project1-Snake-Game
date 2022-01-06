@@ -11,7 +11,7 @@ const context = canvas.getContext("2d");
 
 let bgMusic = new Audio();
 bgMusic.src = "./sounds/Chaoz-Fantasy-8-Bit.mp3";
-bgMusic.volume = 0.2;
+bgMusic.volume = 0.1;
 let chompSound = new Audio();
 chompSound.src = "./sounds/chomp.mp3";
 let gameOverSound = new Audio();
@@ -169,6 +169,7 @@ const gameLoop = setInterval(() => {
     case "start":
       startBtnContainer.style.visibility = "visible";
       scoreListContainer.style.visibility = "hidden";
+      document.removeEventListener("keydown", keyDown);
       break;
     // game screen
     case "game":
@@ -251,23 +252,43 @@ function createItemScore(score, name) {
 // Snake Controls
 document.addEventListener("keydown", (event) => {
   switch (event.keyCode) {
+    // Move UP
     case 38: // Arrow up
       if (snake.direction.y === 1) break;
       snake.direction = { x: 0, y: -1 };
       break;
+    case 87: // W key
+    if (snake.direction.y === 1) break;
+      snake.direction = { x: 0, y: -1 };
+      break;
 
+    // Move DOWN
     case 40: // Arrow down
       if (snake.direction.y === -1) break;
       snake.direction = { x: 0, y: 1 };
       break;
+    case 83: // S key
+    if (snake.direction.y === -1) break;
+      snake.direction = { x: 0, y: 1 };
+      break;
 
+    // Move LEFT
     case 37: // Arrow left
       if (snake.direction.x === 1) break;
       snake.direction = { x: -1, y: 0 };
       break;
+    case 65: // A key
+    if (snake.direction.x === 1) break;
+      snake.direction = { x: -1, y: 0 };
+      break;
 
+    // Move RIGHT
     case 39: // Arrow right
       if (snake.direction.x === -1) break;
+      snake.direction = { x: 1, y: 0 };
+      break;
+    case 68: // D key
+    if (snake.direction.x === -1) break;
       snake.direction = { x: 1, y: 0 };
       break;
   }
