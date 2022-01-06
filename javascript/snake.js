@@ -90,6 +90,30 @@ const fruit = {
   },
 };
 
+// Game Won Check
+function isGameWon() {
+  let gameWon = false;
+  if (snake.direction.x === 0 && snake.direction.y === 0) {
+    return false;
+  }
+
+  if (score >= 300) {
+    gameWon = true;
+  }
+
+  // Game Won Text
+  if (gameWon) {
+    context.font = "50px Arial";
+    let gradient = context.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.addColorStop("0", "orange");
+    gradient.addColorStop("0.5", "yellow");
+    gradient.addColorStop("1.0", "red");
+    context.fillStyle = gradient;
+    context.fillText("You Won!", canvas.width / 3, canvas.height / 2);
+  }
+  return gameWon;
+}
+// Game Over check
 function isGameOver() {
   let gameOver = false;
   if (snake.direction.x === 0 && snake.direction.y === 0) {
@@ -136,7 +160,7 @@ const gameLoop = setInterval(() => {
       break;
     // game screen
     case "game":
-      let result = isGameOver();
+      let result = (isGameWon() || isGameOver());
       if (result) {
         document.removeEventListener("keydown", keyDown);
         clearInterval(gameLoop);
@@ -153,7 +177,7 @@ const gameLoop = setInterval(() => {
       }
 
       // condition for stopping the game and returning to the score screen
-      if (score >= 300 || isGameOver()) {
+      if (isGameWon() || isGameOver()) {
         gameScreen = "score";
       }
       break;
