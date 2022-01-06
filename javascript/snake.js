@@ -8,6 +8,9 @@ const input = document.querySelector(".input");
 
 const context = canvas.getContext("2d");
 
+let chompSound = new Audio();
+chompSound.src = "./sounds/chomp.mp3";
+
 class SnakeSegment {
   constructor(x, y) {
     this.x = x;
@@ -81,6 +84,7 @@ const fruit = {
       this.y = Math.floor(Math.random() * numberOfTiles);
       segmentLength++;
       score++;
+      chompSound.play();
     }
   },
   drawScore: function () {
@@ -105,9 +109,9 @@ function isGameWon() {
   if (gameWon) {
     context.font = "50px Arial";
     let gradient = context.createLinearGradient(0, 0, canvas.width, 0);
-    gradient.addColorStop("0", "orange");
-    gradient.addColorStop("0.5", "yellow");
-    gradient.addColorStop("1.0", "red");
+    gradient.addColorStop("0", "blue");
+    gradient.addColorStop("0.5", "red");
+    gradient.addColorStop("1.0", "magenta");
     context.fillStyle = gradient;
     context.fillText("You Won!", canvas.width / 3, canvas.height / 2);
   }
@@ -142,9 +146,9 @@ function isGameOver() {
   if (gameOver) {
     context.font = "50px Arial";
     let gradient = context.createLinearGradient(0, 0, canvas.width, 0);
-    gradient.addColorStop("0", "orange");
-    gradient.addColorStop("0.5", "yellow");
-    gradient.addColorStop("1.0", "red");
+    gradient.addColorStop("0", "blue");
+    gradient.addColorStop("0.5", "red");
+    gradient.addColorStop("1.0", "magenta");
     context.fillStyle = gradient;
     context.fillText("Game Over!", canvas.width / 3.6, canvas.height / 2);
   }
@@ -221,9 +225,10 @@ playAgainBtn.onclick = () => {
   canvas.style.visibility = "hidden";
 };
 
+// Score list
 function createItemScore(score, name) {
   const scoreItem = document.createElement("li");
-  scoreItem.textHTML = `${name} ${score}`;
+  scoreItem.innerHTML = `${name} ${score}`;
   scoreList.appendChild(scoreItem);
 }
 
