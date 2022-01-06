@@ -11,6 +11,7 @@ const context = canvas.getContext("2d");
 
 let bgMusic = new Audio();
 bgMusic.src = "./sounds/Chaoz-Fantasy-8-Bit.mp3";
+bgMusic.volume = 0.2;
 let chompSound = new Audio();
 chompSound.src = "./sounds/chomp.mp3";
 let gameOverSound = new Audio();
@@ -108,7 +109,7 @@ function isGameWon() {
     return false;
   }
 
-  if (score >= 3) {
+  if (score >= 150) {
     gameWon = true;
   }
 
