@@ -22,8 +22,8 @@ let gameScreen = "start";
 let name = "";
 let score = 0;
 let frames = 0;
-let numberOfTiles = 20;
-let tileSize = 20 -1;
+let numberOfTiles = 24;
+let tileSize = numberOfTiles -1;
 const snakeSegments = [];
 let segmentLength = 0;
 
@@ -99,9 +99,9 @@ function isGameOver() {
   //Wall collision
   if (
     snake.x < 0 ||
-    snake.x > canvas.width ||
+    snake.x > numberOfTiles ||
     snake.y < 0 ||
-    snake.y > canvas.height
+    snake.y > numberOfTiles
   ) {
     gameOver = true;
   }
