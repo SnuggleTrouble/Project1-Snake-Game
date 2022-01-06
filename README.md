@@ -1,10 +1,15 @@
 # Project1-Snake-Game
 # Description
-This is my attempt at making the classic snake game. 
-You play a snake that grows in size when eating fruit.
-The snake will be controlled by the arrow keys.
-The canvas will be a fairly big size. All 4 walls will have collision, and so will the snake.
-The goal of the game is to reach the biggest possible size.
+This is my attempt at making the classic snake game.
+
+You play a ridiculously hungry snake that just can't stop eating fruit.
+The more fruit you eat the bigger you grow.
+
+Be careful not to collide with the walls or yourself.
+
+The goal of the game is to reach the biggest possible size and reach the highest possible score.
+
+Best of luck!
 
 # MVP (DOM - CANVAS)
 * Display the board and the snake
@@ -17,14 +22,13 @@ The goal of the game is to reach the biggest possible size.
 
 # Backlog
 * Add scoreboard
-* Add sounds and music
 * Add art
 
 # Data Structure
 * Classes and methods definition. Or functions.
 
 # States y States Transitions
-* splash Screen
+* start Screen
 * game Screen
 * game Over Screen
 * win Screen
