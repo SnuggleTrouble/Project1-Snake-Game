@@ -20,8 +20,13 @@ body {
 h1, h2, p {
     padding: 5px;
 }
-h1 {
+h1, h2 {
     font-family: fantasy;
+    font-size: 50px;
+}
+
+p {
+    font-size: 18px;
 }
 
 .startBtnContainer {
@@ -36,7 +41,7 @@ h1 {
 
 .input {
     padding: 5px 20px;
-    background-color: rgb(219, 219, 219);
+    background-color: rgba(223, 223, 223, 0.87);
     border: none;
     text-align: center;
 }
