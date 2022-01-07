@@ -13,6 +13,11 @@ const username = document.querySelector(".username");
 const highScores = JSON.parse(localStorage.getItem("highScores")) || [];
 const maxHighScores = 5;
 
+// Images
+let apple = new Image();
+apple.src = "./images/apple1.png";
+
+// Audio
 let bgMusic = new Audio();
 bgMusic.src = "./sounds/Chaoz-Fantasy-8-Bit.mp3";
 bgMusic.volume = 0.1;
@@ -85,13 +90,14 @@ const fruit = {
   y: 7,
   draw: function () {
     this.checkIfEaten();
-    context.fillStyle = "red";
+    context.drawImage(apple, this.x * numberOfTiles, this.y * numberOfTiles, tileSize, tileSize);
+    /* context.fillStyle = "red";
     context.fillRect(
       this.x * numberOfTiles,
       this.y * numberOfTiles,
       tileSize,
       tileSize
-    );
+    ); */
   },
   checkIfEaten: function () {
     if (this.x === snake.x && this.y === snake.y) {
