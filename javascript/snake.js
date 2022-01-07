@@ -5,7 +5,7 @@ const startBtn = document.querySelector(".startBtn");
 const playAgainBtn = document.querySelector(".playAgainBtn");
 const scoreListContainer = document.querySelector(".scoreListContainer");
 const highScoresList = document.querySelector(".highScoresList");
-const finalScore = document.querySelector(".finalScore")
+const finalScore = document.querySelector(".finalScore");
 /* const mostRecentScore = localStorage.getItem("mostRecentScore"); */
 const username = document.querySelector(".username");
 
@@ -179,9 +179,53 @@ const gameLoop = setInterval(() => {
       break;
     // game screen
     case "game":
+      // Snake Controls
+      document.addEventListener("keydown", (event) => {
+       switch (event.keyCode) {
+          // Move UP
+          case 38: // Arrow up
+            if (snake.direction.y === 1) break;
+            snake.direction = { x: 0, y: -1 };
+            break;
+          case 87: // W key
+            if (snake.direction.y === 1) break;
+            snake.direction = { x: 0, y: -1 };
+            break;
+
+          // Move DOWN
+          case 40: // Arrow down
+            if (snake.direction.y === -1) break;
+            snake.direction = { x: 0, y: 1 };
+            break;
+          case 83: // S key
+            if (snake.direction.y === -1) break;
+            snake.direction = { x: 0, y: 1 };
+            break;
+
+          // Move LEFT
+          case 37: // Arrow left
+            if (snake.direction.x === 1) break;
+            snake.direction = { x: -1, y: 0 };
+            break;
+          case 65: // A key
+            if (snake.direction.x === 1) break;
+            snake.direction = { x: -1, y: 0 };
+            break;
+
+          // Move RIGHT
+          case 39: // Arrow right
+            if (snake.direction.x === -1) break;
+            snake.direction = { x: 1, y: 0 };
+            break;
+          case 68: // D key
+            if (snake.direction.x === -1) break;
+            snake.direction = { x: 1, y: 0 };
+            break;
+        }
+      });
+
       let result = isGameWon() || isGameOver();
       if (result) {
-        document.removeEventListener("keydown", keyDown);
         clearInterval(gameLoop);
         break;
       }
@@ -200,11 +244,13 @@ const gameLoop = setInterval(() => {
         gameScreen = "score";
         bgMusic.pause();
         gameWon.play();
+        playAgainBtn.style.visibility = "visible"
       }
       if (isGameOver()) {
         gameScreen = "score";
         bgMusic.pause();
         gameOverSound.play();
+        playAgainBtn.style.visibility = "visible"
       }
       break;
     // score screen
@@ -236,7 +282,7 @@ function gameReset() {
   snake.direction.y = 0;
   fruit.x = 7;
   fruit.y = 7;
-  gameScreen = "start";
+  gameScreen = "game";
 }
 
 // Start button
@@ -253,50 +299,5 @@ startBtn.onclick = () => {
 // Restart button
 playAgainBtn.onclick = () => {
   gameReset();
-  canvas.style.visibility = "hidden";
+  playAgainBtn.style.visibility = "hidden";
 };
-
-// Snake Controls
-document.addEventListener("keydown", (event) => {
-  switch (event.keyCode) {
-    // Move UP
-    case 38: // Arrow up
-      if (snake.direction.y === 1) break;
-      snake.direction = { x: 0, y: -1 };
-      break;
-    case 87: // W key
-      if (snake.direction.y === 1) break;
-      snake.direction = { x: 0, y: -1 };
-      break;
-
-    // Move DOWN
-    case 40: // Arrow down
-      if (snake.direction.y === -1) break;
-      snake.direction = { x: 0, y: 1 };
-      break;
-    case 83: // S key
-      if (snake.direction.y === -1) break;
-      snake.direction = { x: 0, y: 1 };
-      break;
-
-    // Move LEFT
-    case 37: // Arrow left
-      if (snake.direction.x === 1) break;
-      snake.direction = { x: -1, y: 0 };
-      break;
-    case 65: // A key
-      if (snake.direction.x === 1) break;
-      snake.direction = { x: -1, y: 0 };
-      break;
-
-    // Move RIGHT
-    case 39: // Arrow right
-      if (snake.direction.x === -1) break;
-      snake.direction = { x: 1, y: 0 };
-      break;
-    case 68: // D key
-      if (snake.direction.x === -1) break;
-      snake.direction = { x: 1, y: 0 };
-      break;
-  }
-});
