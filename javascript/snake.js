@@ -122,7 +122,7 @@ function isGameWon() {
     return false;
   }
 
-  if (score.score >= 150) {
+  if (score.score >= 575) {
     gameWon = true;
   }
 
@@ -306,4 +306,5 @@ startBtn.onclick = () => {
 playAgainBtn.onclick = () => {
   gameReset();
   playAgainBtn.style.visibility = "hidden";
+  scoreListContainer.style.visibility = "hidden";
 };
