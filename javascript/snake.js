@@ -1,13 +1,17 @@
 const canvas = document.querySelector(".canvas");
+const context = canvas.getContext("2d");
 const startBtnContainer = document.querySelector(".startBtnContainer");
 const startBtn = document.querySelector(".startBtn");
 const playAgainBtn = document.querySelector(".playAgainBtn");
 const scoreListContainer = document.querySelector(".scoreListContainer");
-const scoreList = document.querySelector(".scoreList");
-const input = document.querySelector(".input");
+const highScoresList = document.querySelector(".highScoresList");
+const finalScore = document.querySelector(".finalScore")
+/* const mostRecentScore = localStorage.getItem("mostRecentScore"); */
+const username = document.querySelector(".username");
 
-const context = canvas.getContext("2d");
-
+// initial value of our score is grabbed from local storage
+const highScores = JSON.parse(localStorage.getItem("highScores")) || [];
+const maxHighScores = 5;
 
 let bgMusic = new Audio();
 bgMusic.src = "./sounds/Chaoz-Fantasy-8-Bit.mp3";
@@ -30,11 +34,14 @@ class SnakeSegment {
 let gameScreen = "start";
 
 // initial values of the game
-let name = "";
-let score = 0;
+let score = {
+  score: 0,
+  name: username.value,
+};
+
 let frames = 0;
 let numberOfTiles = 24;
-let tileSize = numberOfTiles -1;
+let tileSize = numberOfTiles - 1;
 const snakeSegments = [];
 let segmentLength = 0;
 
@@ -91,14 +98,14 @@ const fruit = {
       this.x = Math.floor(Math.random() * numberOfTiles);
       this.y = Math.floor(Math.random() * numberOfTiles);
       segmentLength++;
-      score++;
+      score.score++;
       chompSound.play();
     }
   },
   drawScore: function () {
     context.fillStyle = "antiquewhite";
     context.font = "10px Arial";
-    context.fillText("Score " + score, canvas.width - 50, 10);
+    context.fillText("Score " + score.score, canvas.width - 50, 10);
   },
 };
 
@@ -109,7 +116,7 @@ function isGameWon() {
     return false;
   }
 
-  if (score >= 150) {
+  if (score.score >= 150) {
     gameWon = true;
   }
 
@@ -172,11 +179,10 @@ const gameLoop = setInterval(() => {
       break;
     // game screen
     case "game":
-      let result = (isGameWon() || isGameOver());
+      let result = isGameWon() || isGameOver();
       if (result) {
         document.removeEventListener("keydown", keyDown);
         clearInterval(gameLoop);
-        createItemScore("aaa", 100);
         break;
       }
       frames++;
@@ -204,6 +210,16 @@ const gameLoop = setInterval(() => {
     // score screen
     case "score":
       scoreListContainer.style.visibility = "visible";
+      // Score list
+      highScores.push(score);
+      highScores.sort((a, b) => b.score - a.score);
+      highScores.splice(1);
+      localStorage.setItem("highScores", JSON.stringify(highScores));
+      highScoresList.innerHTML = highScores
+        .map((score) => {
+          return `<li>${score.name} - ${score.score}</li>`;
+        })
+        .join("");
       break;
     default:
       break;
@@ -212,7 +228,7 @@ const gameLoop = setInterval(() => {
 
 // resetting the initial value of the game
 function gameReset() {
-  score = 0;
+  score.score = 0;
   segmentLength = 0;
   snake.x = 15;
   snake.y = 15;
@@ -225,10 +241,9 @@ function gameReset() {
 
 // Start button
 startBtn.onclick = () => {
-  console.log(input.value);
-  if (input.value) {
-    name = input.value;
-    input.value = "";
+  if (username.value) {
+    score.name = username.value;
+    username.value = "";
     gameScreen = "game";
     startBtnContainer.style.visibility = "hidden";
     canvas.style.visibility = "visible";
@@ -241,13 +256,6 @@ playAgainBtn.onclick = () => {
   canvas.style.visibility = "hidden";
 };
 
-// Score list
-function createItemScore(score, name) {
-  const scoreItem = document.createElement("li");
-  scoreItem.innerHTML = `${name} ${score}`;
-  scoreList.appendChild(scoreItem);
-}
-
 // Snake Controls
 document.addEventListener("keydown", (event) => {
   switch (event.keyCode) {
@@ -257,7 +265,7 @@ document.addEventListener("keydown", (event) => {
       snake.direction = { x: 0, y: -1 };
       break;
     case 87: // W key
-    if (snake.direction.y === 1) break;
+      if (snake.direction.y === 1) break;
       snake.direction = { x: 0, y: -1 };
       break;
 
@@ -267,7 +275,7 @@ document.addEventListener("keydown", (event) => {
       snake.direction = { x: 0, y: 1 };
       break;
     case 83: // S key
-    if (snake.direction.y === -1) break;
+      if (snake.direction.y === -1) break;
       snake.direction = { x: 0, y: 1 };
       break;
 
@@ -277,7 +285,7 @@ document.addEventListener("keydown", (event) => {
       snake.direction = { x: -1, y: 0 };
       break;
     case 65: // A key
-    if (snake.direction.x === 1) break;
+      if (snake.direction.x === 1) break;
       snake.direction = { x: -1, y: 0 };
       break;
 
@@ -287,7 +295,7 @@ document.addEventListener("keydown", (event) => {
       snake.direction = { x: 1, y: 0 };
       break;
     case 68: // D key
-    if (snake.direction.x === -1) break;
+      if (snake.direction.x === -1) break;
       snake.direction = { x: 1, y: 0 };
       break;
   }

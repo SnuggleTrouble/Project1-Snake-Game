@@ -27,6 +27,7 @@ h1, h2 {
 
 p, ul, li {
     font-size: 18px;
+    list-style: none;
 }
 
 .startBtnContainer {
@@ -39,7 +40,7 @@ p, ul, li {
     top: 75px;
 }
 
-.input {
+.username {
     padding: 5px 20px;
     background-color: rgba(223, 223, 223, 0.87);
     border: none;
@@ -74,8 +75,13 @@ p, ul, li {
     top: 75px;
 }
 
-.scoreList {
+.finalScore {
+    font-family: fantasy;
+};
+
+.highScoresList {
   list-style: none;
+  margin-bottom: 10px;
 }
 
 .playAgainBtn {
