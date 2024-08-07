@@ -1,3 +1,4 @@
+// Constants and DOM Elements
 const canvas = document.querySelector(".canvas");
 const context = canvas.getContext("2d");
 const startBtnContainer = document.querySelector(".startBtnContainer");
@@ -5,293 +6,223 @@ const startBtn = document.querySelector(".startBtn");
 const playAgainBtn = document.querySelector(".playAgainBtn");
 const scoreListContainer = document.querySelector(".scoreListContainer");
 const highScoresList = document.querySelector(".highScoresList");
-const finalScore = document.querySelector(".finalScore");
-/* const mostRecentScore = localStorage.getItem("mostRecentScore"); */
 const username = document.querySelector(".username");
 
-// initial value of our score is grabbed from local storage
-const highScores = JSON.parse(localStorage.getItem("highScores")) || [];
+// Game Settings
+const tileCount = 24;
+const tileSize = tileCount - 1;
 const maxHighScores = 5;
+const winningScore = 100;
 
-// Images
-let apple = new Image();
-apple.src = "./images/apple1.png";
+// Assets
+const appleImage = new Image();
+appleImage.src = "./images/apple1.png";
 
-// Audio
-let bgMusic = new Audio();
-bgMusic.src = "./sounds/Chaoz-Fantasy-8-Bit.mp3";
+const bgMusic = new Audio("./sounds/Chaoz-Fantasy-8-Bit.mp3");
 bgMusic.volume = 0.1;
-let chompSound = new Audio();
-chompSound.src = "./sounds/chomp.mp3";
-let gameOverSound = new Audio();
-gameOverSound.src = "./sounds/gameOver.mp3";
-let gameWon = new Audio();
-gameWon.src = "./sounds/gameWon.mp3";
+const chompSound = new Audio("./sounds/chomp.mp3");
+const gameOverSound = new Audio("./sounds/gameOver.mp3");
+const gameWonSound = new Audio("./sounds/gameWon.mp3");
 
-class SnakeSegment {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-}
-
-// gameScreen is either going to be start || game || score   HINT Visibility: visible || hidden
+// Initial Game State
 let gameScreen = "start";
-
-// initial values of the game
-let score = {
-  score: 0,
-  name: username.value,
-};
-
+let score = { value: 0, name: "" };
 let frames = 0;
-let numberOfTiles = 24;
-let tileSize = numberOfTiles - 1;
-const snakeSegments = [];
-let segmentLength = 0;
+let snakeSegments = [];
+let segmentLength = 1;
+let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
 
+// Snake and Fruit Objects
 const snake = {
   x: 15,
   y: 15,
   direction: { x: 0, y: 0 },
-  draw: function () {
+  move() {
+    this.x += this.direction.x;
+    this.y += this.direction.y;
+  },
+  draw() {
     this.move();
-
     context.fillStyle = "green";
-    for (let i = 0; i < snakeSegments.length; i++) {
-      let segment = snakeSegments[i];
-      context.fillRect(
-        segment.x * numberOfTiles,
-        segment.y * numberOfTiles,
-        tileSize,
-        tileSize
-      );
-    }
-    snakeSegments.push(new SnakeSegment(this.x, this.y)); // places a segment at the end of the array next to the snake head
+    snakeSegments.forEach((segment) => {
+      context.fillRect(segment.x * tileCount, segment.y * tileCount, tileSize, tileSize);
+    });
+    snakeSegments.push({ x: this.x, y: this.y });
     while (snakeSegments.length > segmentLength) {
-      snakeSegments.shift(); // removes the farthest segment from the snake if it has more than the tail length.
+      snakeSegments.shift();
     }
     context.fillStyle = "darkgreen";
-    context.fillRect(
-      this.x * numberOfTiles,
-      this.y * numberOfTiles,
-      tileSize,
-      tileSize
-    );
-  },
-  move: function () {
-    this.x = this.x + this.direction.x;
-    this.y = this.y + this.direction.y;
+    context.fillRect(this.x * tileCount, this.y * tileCount, tileSize, tileSize);
   },
 };
 
 const fruit = {
   x: 7,
   y: 7,
-  draw: function () {
+  draw() {
     this.checkIfEaten();
-    context.drawImage(apple, this.x * numberOfTiles, this.y * numberOfTiles, tileSize, tileSize);
-    /* context.fillStyle = "red";
-    context.fillRect(
-      this.x * numberOfTiles,
-      this.y * numberOfTiles,
-      tileSize,
-      tileSize
-    ); */
+    context.drawImage(appleImage, this.x * tileCount, this.y * tileCount, tileSize, tileSize);
   },
-  checkIfEaten: function () {
+  checkIfEaten() {
     if (this.x === snake.x && this.y === snake.y) {
-      this.x = Math.floor(Math.random() * numberOfTiles);
-      this.y = Math.floor(Math.random() * numberOfTiles);
+      this.x = Math.floor(Math.random() * tileCount);
+      this.y = Math.floor(Math.random() * tileCount);
       segmentLength++;
-      score.score++;
+      score.value++;
       chompSound.play();
+      console.log("Fruit eaten! Score: ", score.value);
     }
   },
-  drawScore: function () {
+  drawScore() {
     context.fillStyle = "antiquewhite";
-    context.font = "10px Arial";
-    context.fillText("Score " + score.score, canvas.width - 50, 10);
+    context.font = "15px Arial";
+    context.fillText(`Score: ${score.value}`, canvas.width - 75, 20);
   },
 };
 
-// Game Won Check
-function isGameWon() {
-  let gameWon = false;
-  if (snake.direction.x === 0 && snake.direction.y === 0) {
-    return false;
-  }
-
-  if (score.score >= 575) {
-    gameWon = true;
-  }
-
-  // Game Won Text
-  if (gameWon) {
-    context.font = "50px Arial";
-    let gradient = context.createLinearGradient(0, 0, canvas.width, 0);
-    gradient.addColorStop("0", "blue");
-    gradient.addColorStop("0.5", "red");
-    gradient.addColorStop("1.0", "magenta");
-    context.fillStyle = gradient;
-    context.fillText("You Won!", canvas.width / 3, canvas.height / 2);
-  }
-  return gameWon;
+// Utility Functions
+function updateHighScores() {
+  highScores.push(score);
+  highScores.sort((a, b) => b.value - a.value);
+  highScores.splice(maxHighScores);
+  localStorage.setItem("highScores", JSON.stringify(highScores));
 }
-// Game Over check
-function isGameOver() {
+
+function displayHighScores() {
+  highScoresList.innerHTML = highScores.map((score) => `<li>${score.name} - ${score.value}</li>`).join("");
+}
+
+function resetGame() {
+  score.value = 0;
+  segmentLength = 1;
+  snake.x = 15;
+  snake.y = 15;
+  snake.direction = { x: 0, y: 0 };
+  fruit.x = 7;
+  fruit.y = 7;
+  gameScreen = "game";
+  snakeSegments = [{ x: snake.x, y: snake.y }]; // Initialize snake segments with the starting position
+}
+
+// Helper Function for Drawing Text
+function drawText(message, fontSize, x, y, color, gradient = null) {
+  context.font = fontSize;
+  if (gradient) {
+    const grad = context.createLinearGradient(0, 0, canvas.width, 0);
+    gradient.forEach((stop) => grad.addColorStop(stop.position, stop.color));
+    context.fillStyle = grad;
+  } else {
+    context.fillStyle = color;
+  }
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(message, x, y);
+}
+
+// Game Status Functions
+function checkGameWon() {
+  if (score.value >= winningScore) {
+    drawText("You Won!", "50px Arial", canvas.width / 2, canvas.height / 2, "white", [
+      { position: "0", color: "blue" },
+      { position: "0.5", color: "red" },
+      { position: "1.0", color: "magenta" },
+    ]);
+    console.log("Game won!");
+    return true;
+  }
+  return false;
+}
+
+function checkGameOver() {
   let gameOver = false;
-  if (snake.direction.x === 0 && snake.direction.y === 0) {
-    return false;
-  }
-
-  //Wall collision
-  if (
-    snake.x < 0 ||
-    snake.x > numberOfTiles ||
-    snake.y < 0 ||
-    snake.y > numberOfTiles
-  ) {
+  if (snake.x < 0 || snake.x >= tileCount || snake.y < 0 || snake.y >= tileCount) {
+    drawText("Game over! You hit the wall.", "40px Arial", canvas.width / 2, canvas.height / 2, "white", [
+      { position: "0", color: "blue" },
+      { position: "0.5", color: "red" },
+      { position: "1.0", color: "magenta" },
+    ]);
+    console.log("Game over: you hit the wall");
     gameOver = true;
-  }
-
-  //Body collision
-  for (let i = 1; i < snakeSegments.length; i++) {
-    const head = snakeSegments[0];
-    if (head.x === snakeSegments[i].x && head.y === snakeSegments[i].y) {
-      gameOver = true;
+  } else {
+    for (let i = 0; i < snakeSegments.length - 1; i++) {
+      if (snake.x === snakeSegments[i].x && snake.y === snakeSegments[i].y) {
+        drawText("Game over! You bit yourself.", "40px Arial", canvas.width / 2, canvas.height / 2, "white", [
+          { position: "0", color: "blue" },
+          { position: "0.5", color: "red" },
+          { position: "1.0", color: "magenta" },
+        ]);
+        console.log("Game over: you bit yourself");
+        gameOver = true;
+        break;
+      }
     }
-  }
-
-  // Game Over Text
-  if (gameOver) {
-    context.font = "50px Arial";
-    let gradient = context.createLinearGradient(0, 0, canvas.width, 0);
-    gradient.addColorStop("0", "blue");
-    gradient.addColorStop("0.5", "red");
-    gradient.addColorStop("1.0", "magenta");
-    context.fillStyle = gradient;
-    context.fillText("Game Over!", canvas.width / 3.6, canvas.height / 2);
   }
   return gameOver;
 }
-// game loop
-const gameLoop = setInterval(() => {
+
+// Event Handlers
+function handleKeyDown(event) {
+  const { keyCode } = event;
+  switch (keyCode) {
+    case 38:
+    case 87:
+      if (snake.direction.y !== 1) snake.direction = { x: 0, y: -1 };
+      break;
+    case 40:
+    case 83:
+      if (snake.direction.y !== -1) snake.direction = { x: 0, y: 1 };
+      break;
+    case 37:
+    case 65:
+      if (snake.direction.x !== 1) snake.direction = { x: -1, y: 0 };
+      break;
+    case 39:
+    case 68:
+      if (snake.direction.x !== -1) snake.direction = { x: 1, y: 0 };
+      break;
+  }
+}
+
+// Game Loop
+function gameLoop() {
   switch (gameScreen) {
-    // start screen
     case "start":
       startBtnContainer.style.visibility = "visible";
       scoreListContainer.style.visibility = "hidden";
       break;
-    // game screen
     case "game":
-      // Snake Controls
-      document.addEventListener("keydown", (event) => {
-       switch (event.keyCode) {
-          // Move UP
-          case 38: // Arrow up
-            if (snake.direction.y === 1) break;
-            snake.direction = { x: 0, y: -1 };
-            break;
-          case 87: // W key
-            if (snake.direction.y === 1) break;
-            snake.direction = { x: 0, y: -1 };
-            break;
-
-          // Move DOWN
-          case 40: // Arrow down
-            if (snake.direction.y === -1) break;
-            snake.direction = { x: 0, y: 1 };
-            break;
-          case 83: // S key
-            if (snake.direction.y === -1) break;
-            snake.direction = { x: 0, y: 1 };
-            break;
-
-          // Move LEFT
-          case 37: // Arrow left
-            if (snake.direction.x === 1) break;
-            snake.direction = { x: -1, y: 0 };
-            break;
-          case 65: // A key
-            if (snake.direction.x === 1) break;
-            snake.direction = { x: -1, y: 0 };
-            break;
-
-          // Move RIGHT
-          case 39: // Arrow right
-            if (snake.direction.x === -1) break;
-            snake.direction = { x: 1, y: 0 };
-            break;
-          case 68: // D key
-            if (snake.direction.x === -1) break;
-            snake.direction = { x: 1, y: 0 };
-            break;
-        }
-      });
-
-      let result = isGameWon() || isGameOver();
-      if (result) {
-        clearInterval(gameLoop);
+      document.removeEventListener("keydown", handleKeyDown); // Avoid multiple listeners
+      document.addEventListener("keydown", handleKeyDown);
+      const gameWon = checkGameWon();
+      const gameOver = checkGameOver();
+      if (gameWon || gameOver) {
+        gameScreen = "score";
+        bgMusic.pause();
+        if (gameWon) gameWonSound.play();
+        if (gameOver) gameOverSound.play();
+        playAgainBtn.style.visibility = "visible";
+        updateHighScores();
+        displayHighScores();
         break;
       }
       frames++;
       if (frames % 3 === 0) {
         context.clearRect(0, 0, canvas.width, canvas.height);
-
         snake.draw();
         fruit.draw();
         fruit.drawScore();
         bgMusic.play();
       }
-
-      // condition for stopping the game and returning to the score screen
-      if (isGameWon()) {
-        gameScreen = "score";
-        bgMusic.pause();
-        gameWon.play();
-        playAgainBtn.style.visibility = "visible"
-      }
-      if (isGameOver()) {
-        gameScreen = "score";
-        bgMusic.pause();
-        gameOverSound.play();
-        playAgainBtn.style.visibility = "visible"
-      }
       break;
-    // score screen
     case "score":
       scoreListContainer.style.visibility = "visible";
-      // Score list
-      highScores.push(score);
-      highScores.sort((a, b) => b.score - a.score);
-      highScores.splice(1);
-      localStorage.setItem("highScores", JSON.stringify(highScores));
-      highScoresList.innerHTML = highScores
-        .map((score) => {
-          return `<li>${score.name} - ${score.score}</li>`;
-        })
-        .join("");
-      break;
-    default:
       break;
   }
-}, 25);
-
-// resetting the initial value of the game
-function gameReset() {
-  score.score = 0;
-  segmentLength = 0;
-  snake.x = 15;
-  snake.y = 15;
-  snake.direction.x = 0;
-  snake.direction.y = 0;
-  fruit.x = 7;
-  fruit.y = 7;
-  gameScreen = "game";
 }
 
-// Start button
+setInterval(gameLoop, 25);
+
+// Start and Restart Handlers
 startBtn.onclick = () => {
   if (username.value) {
     score.name = username.value;
@@ -302,9 +233,8 @@ startBtn.onclick = () => {
   }
 };
 
-// Restart button
 playAgainBtn.onclick = () => {
-  gameReset();
+  resetGame();
   playAgainBtn.style.visibility = "hidden";
   scoreListContainer.style.visibility = "hidden";
 };
