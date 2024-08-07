@@ -1,39 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="X-UA-Compatible"
+      content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0" />
     <title>Snake Game</title>
-    <link rel="stylesheet" href="./styles/snake.css">
-</head>
-<body>
+    <link
+      rel="stylesheet"
+      href="./styles/snake.css" />
+  </head>
+  <body>
     <!-- Start Area -->
     <div class="startBtnContainer">
-        <p>Welcome to SnuggleTrouble's</p>
-        <h1>Snake Game</h1>
-        <p>You're a ridiculously hungry snake that just can't stop eating fruit.
-        <br> The more fruit you eat, the bigger you grow.
-        <br> move around with the arrow keys
-        <br> Be careful not to collide with the walls or yourself.
-        </p>
-        <input class="username" placeholder="Your Name" type="text" name="username">
-        <button class="startBtn">START</button>
+      <p>Welcome to SnuggleTrouble's</p>
+      <h1>Snake Game</h1>
+      <p>
+        You're a ridiculously hungry snake that just can't stop eating fruit. <br />
+        The more fruit you eat, the bigger you grow. <br />
+        move around with the arrow keys <br />
+        Be careful not to collide with the walls or yourself.
+      </p>
+      <input
+        class="username"
+        placeholder="Your Name"
+        type="text"
+        name="username" />
+      <button class="startBtn">START</button>
     </div>
     <!-- Game -->
     <div class="snakeGame">
-        <canvas class="canvas" width="600" height="600"></canvas>
+      <canvas
+        class="canvas"
+        width="600"
+        height="600"></canvas>
     </div>
     <!-- Scoreboard -->
     <div class="scoreListContainer">
-        <h1 class="finalScore">High Score</h1>
-        <ul class="highScoresList">
-        </ul>
-        <p>Your score will only update if you beat your old score. 
-            <br>Best of luck!</p>
-        <button class="playAgainBtn">Play Again</button>
+      <h1 class="finalScore">High Score</h1>
+      <ul class="highScoresList"></ul>
+      <button class="playAgainBtn">Play Again</button>
     </div>
-    
+
     <script src="./javascript/snake.js"></script>
-</body>
+  </body>
 </html>
