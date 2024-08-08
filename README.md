@@ -21,7 +21,6 @@ Best of luck!
 * The game should end if the snake collides with the wall or itself.
 
 # Backlog
-* Add scoreboard
 * Add art
 
 # Data Structure
