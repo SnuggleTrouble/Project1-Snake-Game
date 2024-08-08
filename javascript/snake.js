@@ -1,16 +1,22 @@
 // Constants and DOM Elements
 const canvas = document.querySelector(".canvas");
 const context = canvas.getContext("2d");
-const startBtnContainer = document.querySelector(".startBtnContainer");
+const startContainer = document.querySelector(".startContainer");
 const startBtn = document.querySelector(".startBtn");
 const playAgainBtn = document.querySelector(".playAgainBtn");
 const scoreListContainer = document.querySelector(".scoreListContainer");
 const highScoresList = document.querySelector(".highScoresList");
 const username = document.querySelector(".username");
 
-// Game Settings
+// Set canvas size dynamically
+const canvasSize = 800;
+canvas.width = canvasSize;
+canvas.height = canvasSize;
+
 const tileCount = 24;
-const tileSize = tileCount - 1;
+const tileSize = canvas.width / tileCount;
+
+// Game Settings
 const maxHighScores = 5;
 const winningScore = 100;
 
@@ -24,6 +30,31 @@ const chompSound = new Audio("./sounds/chomp.mp3");
 const gameOverSound = new Audio("./sounds/gameOver.mp3");
 const gameWonSound = new Audio("./sounds/gameWon.mp3");
 
+// Initial game state for grid visibility
+let showGrid = false;
+
+// Grid drawing function
+function drawGrid(tileCount, tileSize) {
+  context.strokeStyle = "rgba(0, 0, 0, 0.2)"; // Light gray color for the grid
+  context.lineWidth = 1;
+
+  // Draw vertical lines
+  for (let x = 0; x <= canvas.width; x += tileSize) {
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, canvas.height);
+    context.stroke();
+  }
+
+  // Draw horizontal lines
+  for (let y = 0; y <= canvas.height; y += tileSize) {
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(canvas.width, y);
+    context.stroke();
+  }
+}
+
 // Initial Game State
 let gameScreen = "start";
 let score = { value: 0, name: "" };
@@ -34,8 +65,8 @@ let highScores = JSON.parse(localStorage.getItem("highScores")) || [];
 
 // Snake and Fruit Objects
 const snake = {
-  x: 15,
-  y: 15,
+  x: Math.floor(tileCount / 2),
+  y: Math.floor(tileCount / 2),
   direction: { x: 0, y: 0 },
   move() {
     this.x += this.direction.x;
@@ -43,25 +74,25 @@ const snake = {
   },
   draw() {
     this.move();
-    context.fillStyle = "green";
+    context.fillStyle = "rgb(231, 196, 57)";
     snakeSegments.forEach((segment) => {
-      context.fillRect(segment.x * tileCount, segment.y * tileCount, tileSize, tileSize);
+      context.fillRect(segment.x * tileSize, segment.y * tileSize, tileSize, tileSize);
     });
     snakeSegments.push({ x: this.x, y: this.y });
     while (snakeSegments.length > segmentLength) {
       snakeSegments.shift();
     }
-    context.fillStyle = "darkgreen";
-    context.fillRect(this.x * tileCount, this.y * tileCount, tileSize, tileSize);
+    context.fillStyle = "rgb(250, 118, 46)";
+    context.fillRect(this.x * tileSize, this.y * tileSize, tileSize, tileSize);
   },
 };
 
 const fruit = {
-  x: 7,
-  y: 7,
+  x: Math.floor(Math.random() * tileCount),
+  y: Math.floor(Math.random() * tileCount),
   draw() {
     this.checkIfEaten();
-    context.drawImage(appleImage, this.x * tileCount, this.y * tileCount, tileSize, tileSize);
+    context.drawImage(appleImage, this.x * tileSize, this.y * tileSize, tileSize, tileSize);
   },
   checkIfEaten() {
     if (this.x === snake.x && this.y === snake.y) {
@@ -95,13 +126,13 @@ function displayHighScores() {
 function resetGame() {
   score.value = 0;
   segmentLength = 1;
-  snake.x = 15;
-  snake.y = 15;
+  snake.x = Math.floor(tileCount / 2);
+  snake.y = Math.floor(tileCount / 2);
   snake.direction = { x: 0, y: 0 };
-  fruit.x = 7;
-  fruit.y = 7;
+  fruit.x = Math.floor(Math.random() * tileCount);
+  fruit.y = Math.floor(Math.random() * tileCount);
   gameScreen = "game";
-  snakeSegments = [{ x: snake.x, y: snake.y }]; // Initialize snake segments with the starting position
+  snakeSegments = [{ x: snake.x, y: snake.y }];
 }
 
 // Helper Function for Drawing Text
@@ -136,20 +167,20 @@ function checkGameWon() {
 function checkGameOver() {
   let gameOver = false;
   if (snake.x < 0 || snake.x >= tileCount || snake.y < 0 || snake.y >= tileCount) {
-    drawText("Game over! You hit the wall.", "40px Arial", canvas.width / 2, canvas.height / 2, "white", [
-      { position: "0", color: "blue" },
+    drawText("Game over! Hit the wall.", "40px Arial", canvas.width / 2, canvas.height / 2, "white", [
+      { position: "0", color: "rgb(250, 118, 46)" },
       { position: "0.5", color: "red" },
-      { position: "1.0", color: "magenta" },
+      { position: "1.0", color: "rgb(231, 196, 57)" },
     ]);
     console.log("Game over: you hit the wall");
     gameOver = true;
   } else {
     for (let i = 0; i < snakeSegments.length - 1; i++) {
       if (snake.x === snakeSegments[i].x && snake.y === snakeSegments[i].y) {
-        drawText("Game over! You bit yourself.", "40px Arial", canvas.width / 2, canvas.height / 2, "white", [
-          { position: "0", color: "blue" },
+        drawText("Game over! Bit yourself.", "40px Arial", canvas.width / 2, canvas.height / 2, "white", [
+          { position: "0", color: "rgb(250, 118, 46)" },
           { position: "0.5", color: "red" },
-          { position: "1.0", color: "magenta" },
+          { position: "1.0", color: "rgb(231, 196, 57)" },
         ]);
         console.log("Game over: you bit yourself");
         gameOver = true;
@@ -187,12 +218,14 @@ function handleKeyDown(event) {
 function gameLoop() {
   switch (gameScreen) {
     case "start":
-      startBtnContainer.style.visibility = "visible";
+      startContainer.style.visibility = "visible";
+      toggleGridBtn.style.visibility = "hidden";
       scoreListContainer.style.visibility = "hidden";
       break;
     case "game":
       document.removeEventListener("keydown", handleKeyDown); // Avoid multiple listeners
       document.addEventListener("keydown", handleKeyDown);
+      toggleGridBtn.style.visibility = "visible";
       const gameWon = checkGameWon();
       const gameOver = checkGameOver();
       if (gameWon || gameOver) {
@@ -205,9 +238,18 @@ function gameLoop() {
         displayHighScores();
         break;
       }
+
       frames++;
       if (frames % 3 === 0) {
         context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Calculate tile size dynamically
+        const tileSize = canvas.width / tileCount;
+
+        if (showGrid) {
+          drawGrid(tileCount, tileSize);
+        }
+
         snake.draw();
         fruit.draw();
         fruit.drawScore();
@@ -228,9 +270,14 @@ startBtn.onclick = () => {
     score.name = username.value;
     username.value = "";
     gameScreen = "game";
-    startBtnContainer.style.visibility = "hidden";
+    startContainer.style.visibility = "hidden";
     canvas.style.visibility = "visible";
   }
+};
+
+const toggleGridBtn = document.querySelector(".toggleGridBtn");
+toggleGridBtn.onclick = () => {
+  showGrid = !showGrid;
 };
 
 playAgainBtn.onclick = () => {

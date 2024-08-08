@@ -36,7 +36,7 @@ li {
   list-style: none;
 }
 
-.startBtnContainer {
+.startContainer {
   visibility: hidden;
   display: flex;
   gap: 10px;
@@ -105,6 +105,27 @@ li {
 }
 
 .playAgainBtn:hover {
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+}
+
+.toggleGridBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  z-index: 1;
+  background: rgb(231, 196, 57);
+  background: radial-gradient(circle, rgba(231, 196, 57, 1) 0%, rgba(250, 118, 46, 1) 100%);
+  color: white;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  padding: 10px 25px;
+  border-radius: 5px;
+}
+
+.toggleGridBtn:hover {
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
 }
 
