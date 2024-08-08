@@ -4,6 +4,7 @@ const context = canvas.getContext("2d");
 const startContainer = document.querySelector(".startContainer");
 const startBtn = document.querySelector(".startBtn");
 const playAgainBtn = document.querySelector(".playAgainBtn");
+const restartBtn = document.querySelector(".restartBtn");
 const scoreListContainer = document.querySelector(".scoreListContainer");
 const highScoresList = document.querySelector(".highScoresList");
 const username = document.querySelector(".username");
@@ -23,7 +24,6 @@ const winningScore = 100;
 // Assets
 const appleImage = new Image();
 appleImage.src = "./images/apple1.png";
-
 const bgMusic = new Audio("./sounds/Chaoz-Fantasy-8-Bit.mp3");
 bgMusic.volume = 0.1;
 const chompSound = new Audio("./sounds/chomp.mp3");
@@ -35,7 +35,7 @@ let showGrid = false;
 
 // Grid drawing function
 function drawGrid(tileCount, tileSize) {
-  context.strokeStyle = "rgba(0, 0, 0, 0.2)"; // Light gray color for the grid
+  context.strokeStyle = "rgba(0, 0, 0, 0.2)";
   context.lineWidth = 1;
 
   // Draw vertical lines
@@ -135,6 +135,20 @@ function resetGame() {
   snakeSegments = [{ x: snake.x, y: snake.y }];
 }
 
+function restartGame() {
+  score.value = 0;
+  segmentLength = 1;
+  snake.x = Math.floor(tileCount / 2);
+  snake.y = Math.floor(tileCount / 2);
+  snake.direction = { x: 0, y: 0 };
+  fruit.x = Math.floor(Math.random() * tileCount);
+  fruit.y = Math.floor(Math.random() * tileCount);
+  gameScreen = "start";
+  snakeSegments = [{ x: snake.x, y: snake.y }];
+  bgMusic.pause();
+  bgMusic.currentTime = 0;
+}
+
 // Helper Function for Drawing Text
 function drawText(message, fontSize, x, y, color, gradient = null) {
   context.font = fontSize;
@@ -219,6 +233,7 @@ function gameLoop() {
   switch (gameScreen) {
     case "start":
       startContainer.style.visibility = "visible";
+      restartBtn.style.visibility = "hidden";
       toggleGridBtn.style.visibility = "hidden";
       scoreListContainer.style.visibility = "hidden";
       break;
@@ -226,6 +241,11 @@ function gameLoop() {
       document.removeEventListener("keydown", handleKeyDown); // Avoid multiple listeners
       document.addEventListener("keydown", handleKeyDown);
       toggleGridBtn.style.visibility = "visible";
+
+      if (bgMusic.paused && gameScreen === "game") {
+        bgMusic.play();
+      }
+
       const gameWon = checkGameWon();
       const gameOver = checkGameOver();
       if (gameWon || gameOver) {
@@ -234,6 +254,7 @@ function gameLoop() {
         if (gameWon) gameWonSound.play();
         if (gameOver) gameOverSound.play();
         playAgainBtn.style.visibility = "visible";
+        restartBtn.style.visibility = "visible";
         updateHighScores();
         displayHighScores();
         break;
@@ -272,6 +293,7 @@ startBtn.onclick = () => {
     gameScreen = "game";
     startContainer.style.visibility = "hidden";
     canvas.style.visibility = "visible";
+    bgMusic.play();
   }
 };
 
@@ -284,4 +306,16 @@ playAgainBtn.onclick = () => {
   resetGame();
   playAgainBtn.style.visibility = "hidden";
   scoreListContainer.style.visibility = "hidden";
+  restartBtn.style.visibility = "hidden";
+};
+
+restartBtn.onclick = () => {
+  restartGame();
+  playAgainBtn.style.visibility = "hidden";
+  restartBtn.style.visibility = "hidden";
+  startContainer.style.visibility = "visible";
+  scoreListContainer.style.visibility = "hidden";
+  canvas.style.visibility = "hidden";
+  // Clear high scores if needed
+  // localStorage.removeItem("highScores");
 };
