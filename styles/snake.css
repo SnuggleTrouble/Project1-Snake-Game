@@ -1,11 +1,11 @@
+/* Global Reset */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/*Splash Screens*/
-
+/* Body and Splash Screens */
 body {
   width: 100vw;
   height: 100vh;
@@ -16,11 +16,14 @@ body {
   text-align: center;
   background: linear-gradient(130deg, #1cb5e0 0%, #000851 100%);
   color: #eeeeee;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Headings and Text */
 h1,
 h2,
-p {
+p,
+pre {
   padding: 5px;
 }
 h1,
@@ -28,14 +31,30 @@ h2 {
   font-family: fantasy;
   font-size: 75px;
 }
-
 p,
+pre,
 ul,
 li {
   font-size: 18px;
   list-style: none;
 }
 
+/* Player Form */
+.playerForm {
+  width: 300px;
+}
+.playerForm .inputArea {
+  width: 100%;
+  height: 50px;
+  font-size: 20px;
+  text-align: center;
+  color: white;
+  border: none;
+  background-color: rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+/* Start Container */
 .startContainer {
   visibility: hidden;
   display: flex;
@@ -46,14 +65,8 @@ li {
   top: 75px;
 }
 
-.username {
-  padding: 5px 20px;
-  background-color: rgba(223, 223, 223, 0.87);
-  border: none;
-  text-align: center;
-}
-
-.startBtn {
+/* Buttons */
+button {
   cursor: pointer;
   z-index: 1;
   background: rgb(231, 196, 57);
@@ -67,10 +80,41 @@ li {
   border-radius: 5px;
 }
 
-.startBtn:hover {
+button:hover {
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
 }
 
+/* Positioning Specific Buttons */
+.restartBtn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+
+.startBtn {
+  margin-top: 10px;
+}
+
+.playAgainBtn {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.toggleGridBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.resetScoreboardBtn {
+  position: absolute;
+  top: 60px;
+  right: 10px;
+}
+
+/* Score List Container */
 .scoreListContainer {
   visibility: hidden;
   display: flex;
@@ -78,7 +122,7 @@ li {
   flex-direction: column;
   align-items: center;
   position: absolute;
-  top: 75px;
+  top: 100px;
 }
 
 .finalScore {
@@ -90,67 +134,7 @@ li {
   margin-bottom: 10px;
 }
 
-.playAgainBtn {
-  cursor: pointer;
-  z-index: 1;
-  background: rgb(231, 196, 57);
-  background: radial-gradient(circle, rgba(231, 196, 57, 1) 0%, rgba(250, 118, 46, 1) 100%);
-  color: white;
-  font-weight: 600;
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  padding: 10px 25px;
-  border-radius: 5px;
-}
-
-.playAgainBtn:hover {
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
-}
-
-.restartBtn {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  cursor: pointer;
-  z-index: 1;
-  background: rgb(231, 196, 57);
-  background: radial-gradient(circle, rgba(231, 196, 57, 1) 0%, rgba(250, 118, 46, 1) 100%);
-  color: white;
-  font-weight: 600;
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  padding: 10px 25px;
-  border-radius: 5px;
-}
-
-.restartBtn:hover {
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
-}
-
-.toggleGridBtn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  cursor: pointer;
-  z-index: 1;
-  background: rgb(231, 196, 57);
-  background: radial-gradient(circle, rgba(231, 196, 57, 1) 0%, rgba(250, 118, 46, 1) 100%);
-  color: white;
-  font-weight: 600;
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  padding: 10px 25px;
-  border-radius: 5px;
-}
-
-.toggleGridBtn:hover {
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
-}
-
-/*Game Board*/
+/* Game Board */
 .canvas {
   background-image: url(/Project1-Snake-Game/images/grass1.jpeg);
   background-repeat: no-repeat;

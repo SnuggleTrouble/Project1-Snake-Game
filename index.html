@@ -18,30 +18,35 @@
     <div class="startContainer">
       <p>Welcome to SnuggleTrouble's</p>
       <h1>Snake Game</h1>
-      <p>
-        You're a ridiculously hungry snake that just can't stop eating fruit. <br />
-        The more fruit you eat, the bigger you grow. <br />
-        move around with the arrow keys <br />
+      <pre>
+        You're a ridiculously hungry snake that just can't stop eating fruit.
+        The more fruit you eat, the bigger you grow.
+        Move around with the arrow keys.
         Be careful not to collide with the walls or yourself.
-      </p>
-      <input
-        class="username"
-        placeholder="Your Name"
-        type="text"
-        name="username" />
-      <button class="startBtn">START</button>
+      </pre>
+      <div class="playerForm">
+        <label for="username">Player Name</label>
+        <input
+          id="username"
+          class="inputArea"
+          type="text"
+          name="username"
+          autocomplete="off" />
+        <button class="startBtn">START</button>
+      </div>
     </div>
     <!-- Game -->
     <div class="snakeGame">
       <button class="toggleGridBtn">Toggle Grid</button>
       <canvas class="canvas"></canvas>
       <button class="restartBtn">Return to Menu</button>
+      <button class="playAgainBtn">Play Again</button>
+      <button class="resetScoreboardBtn">Reset Scoreboard</button>
     </div>
     <!-- Scoreboard -->
     <div class="scoreListContainer">
       <h1 class="finalScore">High Score</h1>
       <ul class="highScoresList"></ul>
-      <button class="playAgainBtn">Play Again</button>
     </div>
 
     <script src="./javascript/snake.js"></script>

@@ -5,9 +5,10 @@ const startContainer = document.querySelector(".startContainer");
 const startBtn = document.querySelector(".startBtn");
 const playAgainBtn = document.querySelector(".playAgainBtn");
 const restartBtn = document.querySelector(".restartBtn");
+const resetScoreboardBtn = document.querySelector(".resetScoreboardBtn");
 const scoreListContainer = document.querySelector(".scoreListContainer");
 const highScoresList = document.querySelector(".highScoresList");
-const username = document.querySelector(".username");
+const username = document.querySelector("#username");
 
 // Set canvas size dynamically
 const canvasSize = 800;
@@ -32,6 +33,11 @@ const gameWonSound = new Audio("./sounds/gameWon.mp3");
 
 // Initial game state for grid visibility
 let showGrid = false;
+
+const toggleGridBtn = document.querySelector(".toggleGridBtn");
+toggleGridBtn.onclick = () => {
+  showGrid = !showGrid;
+};
 
 // Grid drawing function
 function drawGrid(tileCount, tileSize) {
@@ -113,7 +119,8 @@ const fruit = {
 
 // Utility Functions
 function updateHighScores() {
-  highScores.push(score);
+  const newScore = { value: score.value, name: score.name };
+  highScores.push(newScore);
   highScores.sort((a, b) => b.value - a.value);
   highScores.splice(maxHighScores);
   localStorage.setItem("highScores", JSON.stringify(highScores));
@@ -210,19 +217,15 @@ function handleKeyDown(event) {
   const { keyCode } = event;
   switch (keyCode) {
     case 38:
-    case 87:
       if (snake.direction.y !== 1) snake.direction = { x: 0, y: -1 };
       break;
     case 40:
-    case 83:
       if (snake.direction.y !== -1) snake.direction = { x: 0, y: 1 };
       break;
     case 37:
-    case 65:
       if (snake.direction.x !== 1) snake.direction = { x: -1, y: 0 };
       break;
     case 39:
-    case 68:
       if (snake.direction.x !== -1) snake.direction = { x: 1, y: 0 };
       break;
   }
@@ -233,9 +236,11 @@ function gameLoop() {
   switch (gameScreen) {
     case "start":
       startContainer.style.visibility = "visible";
+      playAgainBtn.style.visibility = "hidden";
       restartBtn.style.visibility = "hidden";
       toggleGridBtn.style.visibility = "hidden";
       scoreListContainer.style.visibility = "hidden";
+      resetScoreboardBtn.style.visibility = "hidden";
       break;
     case "game":
       document.removeEventListener("keydown", handleKeyDown); // Avoid multiple listeners
@@ -255,6 +260,7 @@ function gameLoop() {
         if (gameOver) gameOverSound.play();
         playAgainBtn.style.visibility = "visible";
         restartBtn.style.visibility = "visible";
+        resetScoreboardBtn.style.visibility = "visible";
         updateHighScores();
         displayHighScores();
         break;
@@ -297,11 +303,6 @@ startBtn.onclick = () => {
   }
 };
 
-const toggleGridBtn = document.querySelector(".toggleGridBtn");
-toggleGridBtn.onclick = () => {
-  showGrid = !showGrid;
-};
-
 playAgainBtn.onclick = () => {
   resetGame();
   playAgainBtn.style.visibility = "hidden";
@@ -316,6 +317,10 @@ restartBtn.onclick = () => {
   startContainer.style.visibility = "visible";
   scoreListContainer.style.visibility = "hidden";
   canvas.style.visibility = "hidden";
-  // Clear high scores if needed
-  // localStorage.removeItem("highScores");
+};
+
+resetScoreboardBtn.onclick = () => {
+  localStorage.removeItem("highScores");
+  highScores = [];
+  highScoresList.innerHTML = "<li>No high scores yet</li>";
 };
