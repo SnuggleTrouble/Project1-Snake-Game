@@ -84,7 +84,6 @@ button:hover {
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
 }
 
-/* Positioning Specific Buttons */
 .restartBtn {
   position: absolute;
   top: 10px;
@@ -93,6 +92,12 @@ button:hover {
 
 .startBtn {
   margin-top: 10px;
+}
+
+.startBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
 }
 
 .playAgainBtn {
@@ -114,29 +119,70 @@ button:hover {
   right: 10px;
 }
 
+.volumeControl {
+  position: absolute;
+  top: 120px;
+  right: 10px;
+}
+
 /* Score List Container */
 .scoreListContainer {
   visibility: hidden;
   display: flex;
-  gap: 10px;
   flex-direction: column;
   align-items: center;
-  position: absolute;
-  top: 100px;
+  gap: 8px;
+  position: static;
+  margin: 10px 0 0;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  backdrop-filter: blur(2px);
 }
 
 .finalScore {
   font-family: fantasy;
+  font-size: 32px;
+  line-height: 1.1;
 }
 
 .highScoresList {
-  list-style: none;
-  margin-bottom: 10px;
+  width: 320px;
+}
+.highScoresList .score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px;
+}
+.highScoresList .left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.highScoresList .medal {
+  width: 1.6em;
+  text-align: center;
+}
+.highScoresList .badge {
+  display: inline-block;
+  min-width: 1.6em;
+  text-align: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 600;
+}
+.highScoresList .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
 }
 
 /* Game Board */
 .canvas {
-  background-image: url(/Project1-Snake-Game/images/grass1.jpeg);
+  background-image: url(../images//grass1.jpeg);
   background-repeat: no-repeat;
   background-size: 100% 100%;
   display: block;
