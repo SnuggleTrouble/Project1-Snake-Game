@@ -44,6 +44,12 @@ function updateStartButtonState() {
 }
 usernameInput?.addEventListener("input", updateStartButtonState);
 usernameInput?.addEventListener("blur", updateStartButtonState);
+// Allow Enter key to start game from username input
+usernameInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !startBtn.disabled) {
+    startBtn.click();
+  }
+});
 
 // Debug Helper
 function getEffectiveDirection() {
@@ -715,6 +721,14 @@ window.addEventListener("keydown", (e) => {
     case "N":
       if (screen === Screens.GAME && DEBUG.enabled && DEBUG.paused) {
         DEBUG.stepOnce = true; // advance one update on next loop
+      }
+      return;
+
+    case "g":
+    case "G":
+      if (screen === Screens.GAME) {
+        showGrid = !showGrid;
+        if (toggleGridBtn) toggleGridBtn.textContent = showGrid ? "Hide Grid" : "Show Grid";
       }
       return;
 
