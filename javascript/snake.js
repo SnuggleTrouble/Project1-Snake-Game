@@ -160,7 +160,12 @@ const Sounds = {
 };
 
 // Background playlist: chain tracks during gameplay
-const BG_PLAYLIST = [new Audio("./sounds/Avizura-Chaoz-Mirage.mp3"), new Audio("./sounds/Chaoz-Fantasy-8-Bit.mp3")];
+const BG_PLAYLIST = [
+  new Audio("./sounds/ParagonX9_Chaoz_Fantasy_8_Bit.mp3"),
+  new Audio("./sounds/ParagonX9_Metropolis_8.mp3"),
+  new Audio("./sounds/ParagonX9_No_5.mp3"),
+  new Audio("./sounds/Avizura_Chaoz_Mirage.mp3"),
+];
 let bgIndex = 0;
 let bgPlayer = null;
 // Music enabled state (user toggle)
