@@ -13,54 +13,83 @@
       rel="stylesheet"
       href="./styles/snake.css" />
   </head>
-  <body>
+  <body class="screen-start">
     <!-- Start Area -->
     <div class="startContainer">
-      <p>Welcome to SnuggleTrouble's</p>
-      <h1>Snake Game</h1>
-      <pre>
-        You're a ridiculously hungry snake that just can't stop eating fruit.
-        The more fruit you eat, the bigger you grow.
-        Move around with the arrow keys.
-        Be careful not to collide with the walls or yourself.
-      </pre>
+      <p class="tagline">insert coin to begin</p>
+      <h1 class="arcadeTitle">🐍 SNAKE!</h1>
 
-      <div class="speedPicker">
-        <label for="speed">Game speed</label>
-        <select
-          id="speed"
-          class="speedSelect">
-          <option value="50">Easy</option>
-          <option
-            value="25"
-            selected>
-            Normal
-          </option>
-          <option value="15">Hard</option>
-        </select>
+      <div class="arcadeCard">
+        <p class="intro">
+          You're a <strong>ridiculously hungry</strong> snake with one mission:
+          <em>eat fruit, grow huge, don't crash.</em>
+        </p>
+
+        <ul class="tips">
+          <li>Move with <strong>Arrow Keys</strong> or <strong>WASD</strong>.</li>
+          <li>Toggle the grid with <strong>G</strong> (or the button above the canvas).</li>
+          <li>Avoid the <strong>walls</strong> and your own <strong>tail</strong> — or it's game over.</li>
+        </ul>
+
+        <!-- Difficulty Pills -->
+        <div class="speedPicker speedPills">
+          <span class="label">Difficulty</span>
+          <div
+            class="pillRow"
+            role="radiogroup"
+            aria-label="Difficulty">
+            <button
+              class="difficultyPill"
+              role="radio"
+              aria-checked="false"
+              data-ms="50"
+              data-label="easy">
+              Easy
+            </button>
+            <button
+              class="difficultyPill selected"
+              role="radio"
+              aria-checked="true"
+              data-ms="25"
+              data-label="normal">
+              Normal
+            </button>
+            <button
+              class="difficultyPill"
+              role="radio"
+              aria-checked="false"
+              data-ms="15"
+              data-label="hard">
+              Hard
+            </button>
+          </div>
+        </div>
+
+        <div class="playerForm">
+          <label for="username">Player Name</label>
+          <input
+            id="username"
+            class="inputArea"
+            type="text"
+            name="username"
+            autocomplete="off"
+            placeholder="Type your handle…" />
+          <button class="startBtn">START</button>
+        </div>
       </div>
 
       <div class="scoreListContainer">
-        <h2 class="finalScore">Top Scores</h2>
+        <h2 class="finalScore">🏆 Top Scores</h2>
         <ul class="highScoresList"></ul>
       </div>
 
-      <div class="playerForm">
-        <label for="username">Player Name</label>
-        <input
-          id="username"
-          class="inputArea"
-          type="text"
-          name="username"
-          autocomplete="off" />
-        <button class="startBtn">START</button>
-      </div>
+      <p class="footerHint">Pro tip: bigger snake = bigger score. Don't break your neck.</p>
     </div>
 
     <!-- Game -->
     <div class="snakeGame">
       <button class="toggleGridBtn">Toggle Grid</button>
-      <!-- Sound -->
+
       <div class="volumeControl">
         <label for="volume">Volume</label>
         <input
@@ -71,7 +100,28 @@
           step="0.01"
           value="0.1" />
       </div>
-      <canvas class="canvas"></canvas>
+
+      <!-- Canvas frame with CRT overlay -->
+      <div class="canvasFrame">
+        <canvas class="canvas"></canvas>
+        <canvas
+          class="canvas-ui"
+          aria-hidden="true"></canvas>
+        <div
+          class="crtOverlay"
+          aria-hidden="true"></div>
+        <!-- Game Over Overlay -->
+        <div
+          class="gameOverOverlay"
+          id="gameOverOverlay"
+          style="display: none"></div>
+        <!-- Start Instructions Overlay -->
+        <div
+          class="startInstructionsOverlay"
+          id="startInstructionsOverlay"
+          style="display: none"></div>
+      </div>
+
       <button class="restartBtn">Return to Menu</button>
       <button class="playAgainBtn">Play Again</button>
       <button class="resetScoreboardBtn">Reset Scoreboard</button>

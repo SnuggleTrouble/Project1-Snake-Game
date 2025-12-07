@@ -10,12 +10,22 @@ const scoreListContainer = document.querySelector(".scoreListContainer");
 const highScoresList = document.querySelector(".highScoresList");
 const finalScoreHeading = document.querySelector(".finalScore");
 const usernameInput = document.querySelector("#username");
+const gameOverOverlay = document.querySelector("#gameOverOverlay");
+const startInstructionsOverlay = document.querySelector("#startInstructionsOverlay");
 
 // UI
-const speedSelect = document.querySelector("#speed"); // values 50/25/15
+const difficultyPills = document.querySelectorAll(".difficultyPill");
 const volumeSlider = document.querySelector("#volume"); // range 0..1
 const toggleGridBtn = document.querySelector(".toggleGridBtn");
 const volumeControl = document.querySelector(".volumeControl");
+
+const HUD_FONT_FAMILY = '"Press Start 2P", monospace';
+function setHudFont(px, mono = false) {
+  // mono true = fixed-width overlay (debug), else normal HUD
+  const fam = mono ? '"Press Start 2P", monospace' : HUD_FONT_FAMILY;
+  ctx.font = `${px}px ${fam}`;
+  ctx.textBaseline = "top";
+}
 
 // --- Debug state ---
 let DEBUG = {
@@ -50,6 +60,45 @@ usernameInput?.addEventListener("keydown", (e) => {
     startBtn.click();
   }
 });
+
+// ---- Idle detection for start screen CRT roll ----
+let idleTimer = null;
+const IDLE_MS = 8000; // how long before the roll shows
+
+function setBodyState(isStart) {
+  document.body.classList.toggle("screen-start", !!isStart);
+  document.body.classList.toggle("screen-game", !isStart);
+}
+
+function startIdleWatch() {
+  stopIdleWatch();
+  const reset = () => {
+    document.body.classList.remove("is-idle");
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      // only show idle on start screen
+      if (document.body.classList.contains("screen-start")) {
+        document.body.classList.add("is-idle");
+      }
+    }, IDLE_MS);
+  };
+  // events that count as activity
+  const evs = ["mousemove", "mousedown", "keydown", "touchstart", "pointermove"];
+  evs.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+  // store listeners so we can remove later
+  window.__snakeIdleReset = reset;
+  window.__snakeIdleEvents = evs;
+  reset();
+}
+
+function stopIdleWatch() {
+  if (window.__snakeIdleEvents && window.__snakeIdleReset) {
+    window.__snakeIdleEvents.forEach((e) => window.removeEventListener(e, window.__snakeIdleReset, { passive: true }));
+  }
+  clearTimeout(idleTimer);
+  idleTimer = null;
+  document.body.classList.remove("is-idle");
+}
 
 // Debug Helper
 function getEffectiveDirection() {
@@ -88,7 +137,7 @@ atlas.onload = () => {
   console.log(`Atlas ready: ${ATLAS.cols} x ${ATLAS.rows} tiles`);
 };
 
-// Mapping of [tx, ty] = [column, row] in your atlas.
+// Mapping of [tx, ty] = [column, row] in the atlas.
 const SPRITE = {
   head: { up: [3, 0], right: [4, 0], down: [4, 1], left: [3, 1] },
   tail: { up: [3, 2], right: [4, 2], down: [4, 3], left: [3, 3] },
@@ -107,7 +156,7 @@ const Sounds = {
   eat: new Audio("./sounds/chomp.mp3"),
   gameOver: new Audio("./sounds/gameOver.mp3"),
   gameWon: new Audio("./sounds/gameWon.mp3"),
-  bg: new Audio("./sounds/Chaoz-Fantasy-8-Bit.mp3"),
+  bg: new Audio("./sounds/Avizura-Chaoz-Mirage.mp3"),
 };
 Sounds.bg.loop = true;
 
@@ -214,9 +263,13 @@ function enterStartScreen() {
   hide(canvas);
   hide(playAgainBtn);
   hide(restartBtn);
-  show(scoreListContainer); // leaderboard on Start
+  show(scoreListContainer);
   hide(toggleGridBtn);
   show(volumeControl);
+  document.body.classList.add("screen-start");
+  document.body.classList.remove("screen-game");
+  setBodyState(true);
+  startIdleWatch();
 
   try {
     Sounds.bg.pause();
@@ -235,7 +288,11 @@ function enterGameScreen() {
   hide(volumeControl);
   hide(playAgainBtn);
   hide(restartBtn);
-  hide(scoreListContainer); // hidden during play
+  hide(scoreListContainer);
+  document.body.classList.add("screen-game");
+  document.body.classList.remove("screen-start");
+  setBodyState(false);
+  stopIdleWatch();
 
   updateSpeedFromUI();
 
@@ -453,7 +510,7 @@ function drawDebugOverlayHUD() {
   // Label collision target (if any)
   if (collideIndex >= 0) {
     ctx.fillStyle = "rgba(255,0,0,0.9)";
-    ctx.font = "14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    ctx.font = setHudFont(14);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(`#${collideIndex}`, next.x * CELL + CELL / 2, next.y * CELL + CELL / 2);
@@ -480,7 +537,7 @@ function drawDebugOverlayHUD() {
   ctx.fillRect(10, 10, boxW, boxH);
   ctx.globalAlpha = 1;
   ctx.fillStyle = "#0f0";
-  ctx.font = "14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+  ctx.font = setHudFont(12, true); // small debug rows
   for (let i = 0; i < lines.length; i++) {
     ctx.fillText(lines[i], 10 + pad, 10 + pad + (i + 0.8) * lineH);
   }
@@ -535,7 +592,7 @@ function render() {
   if (atlasReady) {
     drawSnakeAtlas();
   } else {
-    // Fallback to your colored rects + triangle tail until the atlas loads
+    // Fallback to colored rects + triangle tail until the atlas loads
     snake.forEach((s, i) => {
       if (i === 0) {
         rect(s.x, s.y, "#fa762e"); // head
@@ -586,12 +643,12 @@ function render() {
 
   // HUD
   ctx.fillStyle = "#eee";
-  ctx.font = "20px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+  ctx.font = setHudFont(18); // main score
   ctx.fillText(`Score: ${score}`, 12, 26);
 
   if (DEBUG.enabled) {
     ctx.save();
-    ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+    ctx.font = setHudFont(12, true); // tiny labels
     ctx.fillStyle = "rgba(255,255,255,0.9)";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -603,10 +660,21 @@ function render() {
   }
 
   // overlays
-  if (!hasStarted) drawOverlay("Press arrow keys / WASD to start");
-  if (isGameOver) drawOverlay(`Game Over — ${gameOverReason}`);
+  if (!hasStarted && startInstructionsOverlay) {
+    startInstructionsOverlay.textContent = "Press arrow keys / WASD to start";
+    startInstructionsOverlay.style.display = "flex";
+  } else if (startInstructionsOverlay) {
+    startInstructionsOverlay.style.display = "none";
+  }
 
-  // 👉 Debug HUD & predicted next step
+  if (isGameOver && gameOverOverlay) {
+    gameOverOverlay.textContent = `Game Over — ${gameOverReason}`;
+    gameOverOverlay.style.display = "flex";
+  } else if (gameOverOverlay) {
+    gameOverOverlay.style.display = "none";
+  }
+
+  // Debug HUD & predicted next step
   if (DEBUG.enabled && screen === Screens.GAME) {
     drawDebugOverlayHUD();
   }
@@ -617,7 +685,7 @@ function drawOverlay(text) {
   ctx.fillStyle = "rgba(0,0,0,0.1)";
   ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
   ctx.fillStyle = "#fff";
-  ctx.font = "32px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+  ctx.font = setHudFont(28); // game over / messages
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(text, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
@@ -650,12 +718,11 @@ function gameOver(reason) {
   show(restartBtn);
   show(toggleGridBtn);
   hide(volumeControl);
-  hide(scoreListContainer); // you asked to disable list on game-over
+  hide(scoreListContainer);
   try {
     Sounds.bg.pause();
   } catch {}
 
-  // record for later
   Scoreboard.push({ name: usernameInput?.value?.trim() || "Anonymous", value: score }, currentSpeedLabel);
 }
 
@@ -703,26 +770,27 @@ window.addEventListener("keydown", (e) => {
     case "D":
       nd = { x: 1, y: 0 };
       break;
-    case "l":
-    case "L":
-      DEBUG.enabled = !DEBUG.enabled;
-      if (!DEBUG.enabled) {
-        DEBUG.paused = false;
-        DEBUG.stepOnce = false;
-      }
-      return;
-    case "p":
-    case "P":
-      if (screen === Screens.GAME && DEBUG.enabled) {
-        DEBUG.paused = !DEBUG.paused;
-      }
-      return;
-    case "n":
-    case "N":
-      if (screen === Screens.GAME && DEBUG.enabled && DEBUG.paused) {
-        DEBUG.stepOnce = true; // advance one update on next loop
-      }
-      return;
+    // Debug toggles
+    // case "l":
+    // case "L":
+    //   DEBUG.enabled = !DEBUG.enabled;
+    //   if (!DEBUG.enabled) {
+    //     DEBUG.paused = false;
+    //     DEBUG.stepOnce = false;
+    //   }
+    //   return;
+    // case "p":
+    // case "P":
+    //   if (screen === Screens.GAME && DEBUG.enabled) {
+    //     DEBUG.paused = !DEBUG.paused;
+    //   }
+    //   return;
+    // case "n":
+    // case "N":
+    //   if (screen === Screens.GAME && DEBUG.enabled && DEBUG.paused) {
+    //     DEBUG.stepOnce = true; // advance one update on next loop
+    //   }
+    //   return;
 
     case "g":
     case "G":
@@ -739,7 +807,7 @@ window.addEventListener("keydown", (e) => {
       return;
   }
 
-  // 💡 Compare against the last effective direction (queued or current)
+  // Compare against the last effective direction (queued or current)
   const lastEffective = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
   if (lastEffective.x === -nd.x && lastEffective.y === -nd.y) return; // block 180°
 
@@ -763,31 +831,49 @@ resetScoreboardBtn.onclick = () => {
   Scoreboard.display(currentSpeedLabel);
 };
 
-// Live speed updates
-speedSelect?.addEventListener("change", () => {
-  if (screen === Screens.START) {
-    const lbl = getSelectedSpeedLabel();
-    if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
-    Scoreboard.display(lbl);
-  } else if (screen === Screens.GAME) {
-    updateSpeedFromUI();
-  }
-});
+// Difficulty pills (single source of truth)
+if (difficultyPills?.length) {
+  difficultyPills.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      // toggle selected state
+      difficultyPills.forEach((b) => {
+        b.classList.remove("selected");
+        b.setAttribute("aria-checked", "false");
+      });
+      btn.classList.add("selected");
+      btn.setAttribute("aria-checked", "true");
+
+      const lbl = getSelectedSpeedLabel();
+      if (screen === Screens.START) {
+        if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
+        Scoreboard.display(lbl);
+      } else if (screen === Screens.GAME) {
+        updateSpeedFromUI();
+      }
+    });
+  });
+}
+
+function readDifficultyFromPills() {
+  const sel = document.querySelector(".difficultyPill.selected, .difficultyPill[aria-checked='true']");
+  if (!sel) return { ms: 25, label: "normal" };
+  const ms = Number(sel.dataset.ms);
+  const label = (sel.dataset.label || sel.textContent || "normal").trim().toLowerCase();
+  return { ms: Number.isFinite(ms) ? ms : 25, label };
+}
 
 function updateSpeedFromUI() {
-  const num = Number(speedSelect?.value);
-  stepMs = Number.isFinite(num) && num > 0 ? num * SPEED_MULT : 100;
-  const opt = speedSelect?.options?.[speedSelect.selectedIndex];
-  currentSpeedLabel = (opt?.textContent || "Normal").trim().toLowerCase();
+  const { ms, label } = readDifficultyFromPills();
+  stepMs = ms * SPEED_MULT;
+  currentSpeedLabel = label;
 }
+
 function getSelectedSpeedLabel() {
-  const opt = speedSelect?.options?.[speedSelect.selectedIndex];
-  return (opt?.textContent || "Normal").trim().toLowerCase();
+  return readDifficultyFromPills().label;
 }
 
 // ---- Boot ----
 (function boot() {
-  if (speedSelect && !speedSelect.value) speedSelect.value = "25"; // Normal default
   enterStartScreen();
   updateStartButtonState();
 })();
