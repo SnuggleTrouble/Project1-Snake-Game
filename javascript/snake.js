@@ -151,14 +151,62 @@ const SPRITE = {
   apple: [0, 3],
 };
 
-// Sounds
+// Sounds (SFX)
 const Sounds = {
   eat: new Audio("./sounds/chomp.mp3"),
   gameOver: new Audio("./sounds/gameOver.mp3"),
   gameWon: new Audio("./sounds/gameWon.mp3"),
-  bg: new Audio("./sounds/Avizura-Chaoz-Mirage.mp3"),
 };
-Sounds.bg.loop = true;
+
+// Background playlist: chain tracks during gameplay
+const BG_PLAYLIST = [new Audio("./sounds/Avizura-Chaoz-Mirage.mp3"), new Audio("./sounds/Chaoz-Fantasy-8-Bit.mp3")];
+let bgIndex = 0;
+let bgPlayer = null;
+
+function initBgPlaylist() {
+  BG_PLAYLIST.forEach((a) => {
+    a.preload = "auto";
+    a.loop = false;
+    a.addEventListener("ended", () => {
+      bgIndex = (bgIndex + 1) % BG_PLAYLIST.length;
+      bgPlayer = BG_PLAYLIST[bgIndex];
+      // play next track automatically
+      try {
+        bgPlayer.currentTime = 0;
+        bgPlayer.play().catch(() => {});
+      } catch {}
+    });
+  });
+  bgIndex = 0;
+  bgPlayer = BG_PLAYLIST[bgIndex];
+}
+
+// Play/pause helpers for background music
+function playBg(opts = { restart: true }) {
+  if (!BG_PLAYLIST.length) return;
+  if (!bgPlayer) initBgPlaylist();
+  if (opts.restart) bgIndex = 0;
+  bgPlayer = BG_PLAYLIST[bgIndex];
+  try {
+    if (opts.restart) bgPlayer.currentTime = 0;
+    bgPlayer.play().catch(() => {});
+  } catch {}
+}
+
+function pauseBg() {
+  if (bgPlayer)
+    try {
+      bgPlayer.pause();
+    } catch {}
+}
+
+function stopBg() {
+  if (bgPlayer)
+    try {
+      bgPlayer.pause();
+      bgPlayer.currentTime = 0;
+    } catch {}
+}
 
 // Fixed SFX volume (tweak to taste)
 const SFX_VOLUME = 1.0;
@@ -169,7 +217,11 @@ const SFX_VOLUME = 1.0;
 // Music-only volume
 function setMusicVolume(v) {
   const vol = Math.min(1, Math.max(0, Number(v)));
-  if (Sounds.bg) Sounds.bg.volume = vol;
+  BG_PLAYLIST.forEach((a) => {
+    try {
+      a.volume = vol;
+    } catch {}
+  });
 }
 
 // Init + live updates (Start/Score screens)
@@ -272,7 +324,7 @@ function enterStartScreen() {
   startIdleWatch();
 
   try {
-    Sounds.bg.pause();
+    pauseBg();
   } catch {}
 
   const lbl = getSelectedSpeedLabel();
@@ -280,7 +332,7 @@ function enterStartScreen() {
   Scoreboard.display(lbl);
 }
 
-function enterGameScreen() {
+function enterGameScreen(opts = { restartMusic: true }) {
   screen = Screens.GAME;
   hide(startContainer);
   show(canvas);
@@ -311,8 +363,7 @@ function enterGameScreen() {
   spawnFood();
 
   try {
-    Sounds.bg.currentTime = 0;
-    Sounds.bg.play().catch(() => {});
+    if (opts.restartMusic) playBg({ restart: true });
   } catch {}
 
   lastTime = performance.now();
@@ -720,7 +771,7 @@ function gameOver(reason) {
   hide(volumeControl);
   hide(scoreListContainer);
   try {
-    Sounds.bg.pause();
+    pauseBg();
   } catch {}
 
   Scoreboard.push({ name: usernameInput?.value?.trim() || "Anonymous", value: score }, currentSpeedLabel);
@@ -740,7 +791,7 @@ function gameWon() {
   hide(volumeControl);
   hide(scoreListContainer);
   try {
-    Sounds.bg.pause();
+    pauseBg();
   } catch {}
 
   Scoreboard.push({ name: usernameInput?.value?.trim() || "Anonymous", value: score }, currentSpeedLabel);
@@ -824,7 +875,11 @@ startBtn.onclick = () => {
   }
   enterGameScreen();
 };
-playAgainBtn.onclick = () => enterGameScreen();
+playAgainBtn.onclick = () => {
+  // Resume background music and continue where it left off when replaying
+  playBg({ restart: false });
+  enterGameScreen({ restartMusic: false });
+};
 restartBtn.onclick = () => enterStartScreen();
 resetScoreboardBtn.onclick = () => {
   Scoreboard.reset(currentSpeedLabel);
@@ -876,4 +931,8 @@ function getSelectedSpeedLabel() {
 (function boot() {
   enterStartScreen();
   updateStartButtonState();
+  // Prepare background playlist (attach ended handlers)
+  try {
+    initBgPlaylist();
+  } catch {}
 })();
