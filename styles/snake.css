@@ -144,15 +144,76 @@ button:active {
 }
 
 .resetScoreboardBtn {
-  position: absolute;
-  top: 60px;
-  right: 10px;
+  /* Center the reset button below the footer in the Start screen */
+  position: static;
+  margin: 12px auto 0;
+  display: block;
 }
 
 .volumeControl {
   position: absolute;
   top: 120px;
   right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  z-index: 220; /* sit above the canvas/frame */
+}
+
+/* Music toggle button (compact) */
+.musicToggleBtn {
+  padding: 8px 14px;
+  font-size: 12px;
+  border-radius: 6px;
+  min-width: 120px;
+}
+
+.volumeControl label {
+  font-size: 12px;
+  opacity: 0.95;
+}
+.volumeControl input[type="range"] {
+  width: 140px;
+}
+
+.musicToggleBtn.inGame {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 120;
+  min-width: 84px;
+  height: 34px;
+  display: none; /* default hidden on Start */
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 160ms ease, transform 120ms ease;
+}
+
+.musicToggleBtn.inGame:hover {
+  background: rgba(0, 0, 0, 0.68);
+  transform: translateY(-2px);
+}
+
+.musicToggleBtn.inGame:active {
+  transform: translateY(0);
+}
+
+/* Show the in-game toggle only when playing or viewing scores */
+body.screen-game .musicToggleBtn.inGame,
+body.screen-score .musicToggleBtn.inGame {
+  display: inline-flex;
 }
 
 /* Score List Container */
@@ -364,10 +425,9 @@ body.screen-game .canvas {
   visibility: visible; /* ensure visible when game active */
   outline: 6px solid rgba(255, 208, 0, 0.95); /* bright border to indicate walls */
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(255, 140, 60, 0.12) inset;
+  background: url("../images/grass1.jpeg") center/cover no-repeat !important;
 }
 
-/* Keep the canvas subtle on the start screen (outline already defined on .canvas)
-   but ensure it cannot capture pointer events until the game starts. */
 body.screen-start .canvas {
   visibility: hidden; /* hidden while on main menu */
 }
@@ -452,18 +512,22 @@ body.screen-start .canvas {
   display: grid;
   gap: 6px;
 }
+
 .speedPicker label {
   font-weight: 700;
 }
+
 /* Difficulty pills */
 .speedPills {
   margin: 10px 0 12px;
 }
+
 .speedPills .label {
   display: inline-block;
   font-weight: 700;
   margin-bottom: 6px;
 }
+
 .pillRow {
   display: inline-flex;
   gap: 10px;
@@ -471,6 +535,7 @@ body.screen-start .canvas {
   justify-content: center;
   flex-wrap: wrap;
 }
+
 .difficultyPill {
   cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -484,15 +549,18 @@ body.screen-start .canvas {
   text-transform: uppercase;
   transition: transform 120ms ease, box-shadow 120ms ease, background 150ms ease;
 }
+
 .difficultyPill:hover {
   transform: translateY(-1px);
 }
+
 .difficultyPill.selected,
 .difficultyPill[aria-checked="true"] {
   background: radial-gradient(circle, rgba(231, 196, 57, 1) 0%, rgba(250, 118, 46, 1) 100%);
   border-color: rgba(255, 255, 255, 0.4);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 12px 24px rgba(255, 140, 60, 0.35);
 }
+
 .difficultyPill:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(255, 190, 70, 0.35);
@@ -506,6 +574,7 @@ body.screen-start .canvas {
   padding: 12px 28px;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 10px 18px rgba(255, 140, 60, 0.35);
 }
+
 .startBtn:hover {
   transform: translateY(-1px) scale(1.02);
 }
@@ -552,9 +621,6 @@ body.screen-start .canvas {
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* CRT overlay sits above the game canvas but below the UI overlay.
-   Make it pointer-events: none so it doesn't block clicks, and allow
-   transparency so underlying canvas remains visible. */
 .crtOverlay {
   position: absolute;
   inset: 0;

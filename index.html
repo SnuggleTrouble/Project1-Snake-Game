@@ -84,6 +84,7 @@
       </div>
 
       <p class="footerHint">Pro tip: bigger snake = bigger score. Don't break your neck.</p>
+      <button class="resetScoreboardBtn">Reset Scoreboard</button>
     </div>
 
     <!-- Game -->
@@ -99,6 +100,11 @@
           max="1"
           step="0.01"
           value="0.1" />
+        <button
+          class="musicToggleBtn"
+          aria-pressed="true">
+          Music: On
+        </button>
       </div>
 
       <!-- Canvas frame with CRT overlay -->
@@ -110,11 +116,13 @@
         <div
           class="crtOverlay"
           aria-hidden="true"></div>
+
         <!-- Game Over Overlay -->
         <div
           class="gameOverOverlay"
           id="gameOverOverlay"
           style="display: none"></div>
+
         <!-- Start Instructions Overlay -->
         <div
           class="startInstructionsOverlay"
@@ -124,7 +132,6 @@
 
       <button class="restartBtn">Return to Menu</button>
       <button class="playAgainBtn">Play Again</button>
-      <button class="resetScoreboardBtn">Reset Scoreboard</button>
     </div>
 
     <script src="./javascript/snake.js"></script>

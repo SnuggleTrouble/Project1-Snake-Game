@@ -18,10 +18,11 @@ const difficultyPills = document.querySelectorAll(".difficultyPill");
 const volumeSlider = document.querySelector("#volume"); // range 0..1
 const toggleGridBtn = document.querySelector(".toggleGridBtn");
 const volumeControl = document.querySelector(".volumeControl");
+const musicToggleBtnNodeList = document.querySelectorAll(".musicToggleBtn");
+const musicToggleBtns = Array.from(musicToggleBtnNodeList || []);
 
 const HUD_FONT_FAMILY = '"Press Start 2P", monospace';
 function setHudFont(px, mono = false) {
-  // mono true = fixed-width overlay (debug), else normal HUD
   const fam = mono ? '"Press Start 2P", monospace' : HUD_FONT_FAMILY;
   ctx.font = `${px}px ${fam}`;
   ctx.textBaseline = "top";
@@ -32,7 +33,7 @@ let DEBUG = {
   enabled: false,
   paused: false,
   stepOnce: false,
-  emaFps: 0, // smoothed FPS
+  emaFps: 0,
 };
 
 // Canvas & Scale
@@ -63,7 +64,7 @@ usernameInput?.addEventListener("keydown", (e) => {
 
 // ---- Idle detection for start screen CRT roll ----
 let idleTimer = null;
-const IDLE_MS = 8000; // how long before the roll shows
+const IDLE_MS = 2000; // how long before the roll shows
 
 function setBodyState(isStart) {
   document.body.classList.toggle("screen-start", !!isStart);
@@ -162,6 +163,32 @@ const Sounds = {
 const BG_PLAYLIST = [new Audio("./sounds/Avizura-Chaoz-Mirage.mp3"), new Audio("./sounds/Chaoz-Fantasy-8-Bit.mp3")];
 let bgIndex = 0;
 let bgPlayer = null;
+// Music enabled state (user toggle)
+let musicEnabled = true;
+
+function updateMusicToggleUI() {
+  musicToggleBtns.forEach((btn) => {
+    try {
+      btn.textContent = musicEnabled ? "Music: On" : "Music: Off";
+      btn.setAttribute("aria-pressed", musicEnabled ? "true" : "false");
+    } catch {}
+  });
+}
+
+function toggleMusicEnabled(shouldEnable) {
+  if (typeof shouldEnable === "boolean") musicEnabled = shouldEnable;
+  else musicEnabled = !musicEnabled;
+  try {
+    localStorage.setItem("snake:musicEnabled", musicEnabled ? "true" : "false");
+  } catch {}
+  updateMusicToggleUI();
+  try {
+    if (musicEnabled) playBg({ restart: false });
+    else pauseBg();
+  } catch {}
+}
+
+musicToggleBtns.forEach((b) => b.addEventListener("click", () => toggleMusicEnabled()));
 
 function initBgPlaylist() {
   BG_PLAYLIST.forEach((a) => {
@@ -227,6 +254,14 @@ function setMusicVolume(v) {
 // Init + live updates (Start/Score screens)
 setMusicVolume(volumeSlider?.value || 0.1);
 volumeSlider?.addEventListener("input", (e) => setMusicVolume(e.target.value));
+
+// Load persisted music preference (defaults to true)
+try {
+  const raw = localStorage.getItem("snake:musicEnabled");
+  if (raw !== null) musicEnabled = raw === "true";
+} catch {}
+// Apply initial UI state for toggle controls
+updateMusicToggleUI();
 
 // ---- State machine ----
 const Screens = Object.freeze({ START: "start", GAME: "game", SCORE: "score" });
@@ -320,6 +355,7 @@ function enterStartScreen() {
   show(volumeControl);
   document.body.classList.add("screen-start");
   document.body.classList.remove("screen-game");
+  document.body.classList.remove("screen-score");
   setBodyState(true);
   startIdleWatch();
 
@@ -337,12 +373,13 @@ function enterGameScreen(opts = { restartMusic: true }) {
   hide(startContainer);
   show(canvas);
   show(toggleGridBtn);
-  hide(volumeControl);
+  show(volumeControl);
   hide(playAgainBtn);
   hide(restartBtn);
   hide(scoreListContainer);
   document.body.classList.add("screen-game");
   document.body.classList.remove("screen-start");
+  document.body.classList.remove("screen-score");
   setBodyState(false);
   stopIdleWatch();
 
@@ -363,7 +400,8 @@ function enterGameScreen(opts = { restartMusic: true }) {
   spawnFood();
 
   try {
-    if (opts.restartMusic) playBg({ restart: true });
+    // Only start music if user has enabled it
+    if (musicEnabled && opts.restartMusic) playBg({ restart: true });
   } catch {}
 
   lastTime = performance.now();
@@ -378,6 +416,9 @@ function enterScoreScreen() {
   show(toggleGridBtn);
   show(volumeControl);
   show(canvas);
+  document.body.classList.add("screen-score");
+  document.body.classList.remove("screen-start");
+  document.body.classList.remove("screen-game");
 }
 
 // ---- Loop ----
@@ -596,7 +637,6 @@ function drawDebugOverlayHUD() {
 }
 
 function render() {
-  // Keep canvas transparent so CSS grass shows through
   ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
   if (showGrid) {
@@ -635,7 +675,6 @@ function render() {
     const pad = 2;
     ctx.drawImage(appleImage, food.x * CELL + pad, food.y * CELL + pad, CELL - pad * 2, CELL - pad * 2);
   } else {
-    // fallback
     rect(food.x, food.y, "#60a5fa");
   }
 
@@ -643,7 +682,6 @@ function render() {
   if (atlasReady) {
     drawSnakeAtlas();
   } else {
-    // Fallback to colored rects + triangle tail until the atlas loads
     snake.forEach((s, i) => {
       if (i === 0) {
         rect(s.x, s.y, "#fa762e"); // head
@@ -661,7 +699,7 @@ function render() {
   function drawTailTriangle(gx, gy, dx, dy, color = "#e7c439") {
     const x = gx * CELL;
     const y = gy * CELL;
-    const pad = 1; // smaller pad = pointier tail
+    const pad = 1;
 
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -768,7 +806,7 @@ function gameOver(reason) {
   show(playAgainBtn);
   show(restartBtn);
   show(toggleGridBtn);
-  hide(volumeControl);
+  show(volumeControl);
   hide(scoreListContainer);
   try {
     pauseBg();
@@ -788,7 +826,7 @@ function gameWon() {
   show(playAgainBtn);
   show(restartBtn);
   show(toggleGridBtn);
-  hide(volumeControl);
+  show(volumeControl);
   hide(scoreListContainer);
   try {
     pauseBg();
@@ -877,7 +915,7 @@ startBtn.onclick = () => {
 };
 playAgainBtn.onclick = () => {
   // Resume background music and continue where it left off when replaying
-  playBg({ restart: false });
+  if (musicEnabled) playBg({ restart: false });
   enterGameScreen({ restartMusic: false });
 };
 restartBtn.onclick = () => enterStartScreen();
@@ -931,7 +969,6 @@ function getSelectedSpeedLabel() {
 (function boot() {
   enterStartScreen();
   updateStartButtonState();
-  // Prepare background playlist (attach ended handlers)
   try {
     initBgPlaylist();
   } catch {}
