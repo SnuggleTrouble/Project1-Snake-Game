@@ -159,13 +159,14 @@ const Sounds = {
   gameWon: new Audio("./sounds/gameWon.mp3"),
 };
 
-// Background playlist: chain tracks during gameplay
+// Background playlist: chain tracks during gameplay (exclude start-screen track)
 const BG_PLAYLIST = [
   new Audio("./sounds/ParagonX9_Chaoz_Fantasy_8_Bit.mp3"),
   new Audio("./sounds/ParagonX9_Metropolis_8.mp3"),
   new Audio("./sounds/ParagonX9_No_5.mp3"),
-  new Audio("./sounds/Avizura_Chaoz_Mirage.mp3"),
 ];
+// Dedicated start-screen track (plays only on the Start screen)
+const START_TRACK = new Audio("./sounds/Avizura_Chaoz_Mirage.mp3");
 let bgIndex = 0;
 let bgPlayer = null;
 // Music enabled state (user toggle)
@@ -188,8 +189,18 @@ function toggleMusicEnabled(shouldEnable) {
   } catch {}
   updateMusicToggleUI();
   try {
-    if (musicEnabled) playBg({ restart: false });
-    else pauseBg();
+    // If enabling, play the appropriate track for the current screen
+    if (musicEnabled) {
+      if (screen === Screens.START) {
+        playStartMusic();
+      } else {
+        playBg({ restart: false });
+      }
+    } else {
+      // disable all music
+      pauseBg();
+      pauseStartMusic();
+    }
   } catch {}
 }
 
@@ -211,6 +222,45 @@ function initBgPlaylist() {
   });
   bgIndex = 0;
   bgPlayer = BG_PLAYLIST[bgIndex];
+}
+
+// boot-time init for start track + playlist
+function initMusic() {
+  try {
+    initBgPlaylist();
+  } catch {}
+  try {
+    initStartTrack();
+  } catch {}
+}
+function playStartMusic() {
+  try {
+    if (!START_TRACK) return;
+    START_TRACK.currentTime = 0;
+    START_TRACK.play().catch(() => {});
+  } catch {}
+}
+
+function pauseStartMusic() {
+  try {
+    if (!START_TRACK) return;
+    START_TRACK.pause();
+  } catch {}
+}
+
+function stopStartMusic() {
+  try {
+    if (!START_TRACK) return;
+    START_TRACK.pause();
+    START_TRACK.currentTime = 0;
+  } catch {}
+}
+
+function initStartTrack() {
+  try {
+    START_TRACK.preload = "auto";
+    START_TRACK.loop = true; // loop on start screen
+  } catch {}
 }
 
 // Play/pause helpers for background music
@@ -254,6 +304,9 @@ function setMusicVolume(v) {
       a.volume = vol;
     } catch {}
   });
+  try {
+    START_TRACK.volume = vol;
+  } catch {}
 }
 
 // Init + live updates (Start/Score screens)
@@ -365,7 +418,9 @@ function enterStartScreen() {
   startIdleWatch();
 
   try {
-    pauseBg();
+    // stop in-game playlist and start the dedicated start-screen music
+    stopBg();
+    if (musicEnabled) playStartMusic();
   } catch {}
 
   const lbl = getSelectedSpeedLabel();
@@ -405,7 +460,8 @@ function enterGameScreen(opts = { restartMusic: true }) {
   spawnFood();
 
   try {
-    // Only start music if user has enabled it
+    // Stop any start-screen music, then start in-game playlist if enabled
+    stopStartMusic();
     if (musicEnabled && opts.restartMusic) playBg({ restart: true });
   } catch {}
 
@@ -972,9 +1028,13 @@ function getSelectedSpeedLabel() {
 
 // ---- Boot ----
 (function boot() {
-  enterStartScreen();
-  updateStartButtonState();
   try {
-    initBgPlaylist();
+    initMusic();
   } catch {}
+  // re-apply configured music volume so START_TRACK gets the value
+  try {
+    setMusicVolume(volumeSlider?.value || 0.1);
+  } catch {}
+  updateStartButtonState();
+  enterStartScreen();
 })();
