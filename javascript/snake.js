@@ -20,6 +20,10 @@ const toggleGridBtn = document.querySelector(".toggleGridBtn");
 const volumeControl = document.querySelector(".volumeControl");
 const musicToggleBtnNodeList = document.querySelectorAll(".musicToggleBtn");
 const musicToggleBtns = Array.from(musicToggleBtnNodeList || []);
+// UI elements created in index.html
+const volumePercent = document.querySelector(".volumePercent");
+const pauseBtn = document.querySelector(".pauseBtn");
+const pausedOverlayEl = document.querySelector(".pausedOverlay");
 
 const HUD_FONT_FAMILY = '"Press Start 2P", monospace';
 function setHudFont(px, mono = false) {
@@ -159,14 +163,38 @@ const Sounds = {
   gameWon: new Audio("./sounds/gameWon.mp3"),
 };
 
-// Background playlist: chain tracks during gameplay (exclude start-screen track)
+// Crossfade duration (ms)
+const CROSSFADE_MS = 1600;
+let masterMusicVolume = 0.1; // master music volume (0..1) — default to 10%
+// Web Audio API handles — we'll attempt to migrate to use GainNode ramps
+let audioContext = null;
+let masterGainNode = null;
+let usingWebAudio = false;
+const MIN_GAIN = 0.001; // small epsilon for exponential ramps (must be > 0)
+
+function mkTrack(src, label) {
+  const a = new Audio(src);
+  a.preload = "auto";
+  a.dataset.trackLabel = label || src;
+  // track web-audio metadata
+  a.__webAudioInit = false;
+  a.__webGain = null;
+  a.__webSource = null;
+  return a;
+}
+
+// Background playlist: chain tracks during gameplay (exclude START_TRACK)
 const BG_PLAYLIST = [
-  new Audio("./sounds/ParagonX9_Chaoz_Fantasy_8_Bit.mp3"),
-  new Audio("./sounds/ParagonX9_Metropolis_8.mp3"),
-  new Audio("./sounds/ParagonX9_No_5.mp3"),
+  mkTrack("./sounds/ParagonX9_Metropolis_8.mp3", "ParagonX9 - Metropolis 8Bit"),
+  mkTrack("./sounds/ParagonX9_No_5.mp3", "ParagonX9 - No. 5"),
+  mkTrack("./sounds/ParagonX9_Defection.mp3", "ParagonX9 - Defection"),
+  mkTrack("./sounds/ParagonX9_Chaoz_Lyth3ro.mp3", "ParagonX9 - Chaoz Lyth3ro"),
+  mkTrack("./sounds/Avizura_Chaoz_Mirage.mp3", "Avizura - Chaoz Mirage"),
+  mkTrack("./sounds/ParagonX9_Soulblade_NG_C.mp3", "ParagonX9 - Soulblade NG C"),
+  mkTrack("./sounds/ParagonX9_Chaoz_Fantasy_8_Bit.mp3", "ParagonX9 - Chaoz Fantasy 8Bit"),
 ];
-// Dedicated start-screen track (plays only on the Start screen)
-const START_TRACK = new Audio("./sounds/Avizura_Chaoz_Mirage.mp3");
+// Dedicated start-screen track (plays only on the Start screen, then chains into playlist)
+const START_TRACK = mkTrack("./sounds/ParagonX9_Chaoz_Fantasy_8_Bit.mp3", "ParagonX9 - Chaoz Fantasy 8Bit");
 let bgIndex = 0;
 let bgPlayer = null;
 // Music enabled state (user toggle)
@@ -177,8 +205,22 @@ function updateMusicToggleUI() {
     try {
       btn.textContent = musicEnabled ? "Music: On" : "Music: Off";
       btn.setAttribute("aria-pressed", musicEnabled ? "true" : "false");
-    } catch {}
+    } catch (e) {}
   });
+  // Update track label when toggling
+  if (!musicEnabled) {
+    setTrackLabel("Muted");
+  } else {
+    try {
+      if (document.body.classList.contains("screen-start") && START_TRACK && !START_TRACK.paused) {
+        setTrackLabel(START_TRACK.dataset.trackLabel);
+      } else if (bgPlayer && !bgPlayer.paused) {
+        setTrackLabel(bgPlayer.dataset.trackLabel);
+      } else {
+        setTrackLabel("—");
+      }
+    } catch (e) {}
+  }
 }
 
 function toggleMusicEnabled(shouldEnable) {
@@ -186,66 +228,536 @@ function toggleMusicEnabled(shouldEnable) {
   else musicEnabled = !musicEnabled;
   try {
     localStorage.setItem("snake:musicEnabled", musicEnabled ? "true" : "false");
-  } catch {}
+  } catch (e) {}
   updateMusicToggleUI();
   try {
     // If enabling, play the appropriate track for the current screen
     if (musicEnabled) {
-      if (screen === Screens.START) {
-        playStartMusic();
+      // Ensure AudioContext exists if user turned music on
+      try {
+        ensureAudioContext();
+      } catch (e) {
+        console.error("ensureAudioContext failed in toggleMusicEnabled", e);
+      }
+      // Attempt to resume the audio context — this should be allowed since it's triggered from a user gesture
+      try {
+        if (audioContext && audioContext.state === "suspended") {
+          audioContext
+            .resume()
+            .then(() => console.debug("audioContext resumed via toggleMusicEnabled"))
+            .catch((e) => console.error("audioContext resume failed (toggleMusic)", e));
+        }
+      } catch (e) {
+        console.error("audioContext resume attempt failed (toggleMusic)", e);
+      }
+      // Do not auto-start music when toggled on; just unmute/resume existing playback state
+      // If nothing is playing, start the appropriate source
+      if (document.body.classList.contains("screen-start")) {
+        if (START_TRACK && START_TRACK.paused) playStartMusic({ restart: false });
       } else {
-        playBg({ restart: false });
+        if ((bgPlayer && bgPlayer.paused) || !bgPlayer) playBg({ restart: false });
       }
     } else {
       // disable all music
       pauseBg();
       pauseStartMusic();
+      try {
+        if (usingWebAudio && audioContext && audioContext.state === "running") audioContext.suspend().catch(() => {});
+      } catch (e) {}
     }
-  } catch {}
+  } catch (e) {}
 }
 
 musicToggleBtns.forEach((b) => b.addEventListener("click", () => toggleMusicEnabled()));
 
 function initBgPlaylist() {
   BG_PLAYLIST.forEach((a) => {
-    a.preload = "auto";
     a.loop = false;
-    a.addEventListener("ended", () => {
+    // clear existing listeners to avoid duplicates
+    a.onended = null;
+    a.onended = function () {
+      // default ended handler is to start the next track (but we will normally crossfade earlier)
       bgIndex = (bgIndex + 1) % BG_PLAYLIST.length;
-      bgPlayer = BG_PLAYLIST[bgIndex];
-      // play next track automatically
+      const next = BG_PLAYLIST[bgIndex];
+      // ensure outgoing track is paused before starting next
       try {
-        bgPlayer.currentTime = 0;
-        bgPlayer.play().catch(() => {});
-      } catch {}
-    });
+        if (a && !a.paused) {
+          a.pause();
+          a.currentTime = 0;
+        }
+      } catch (e) {}
+      playTrackAtIndex(bgIndex, { restart: true });
+    };
   });
   bgIndex = 0;
   bgPlayer = BG_PLAYLIST[bgIndex];
+}
+
+// --- WebAudio helpers ---
+function ensureAudioContext() {
+  if (audioContext) return audioContext;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    audioContext = new AudioCtx();
+    masterGainNode = audioContext.createGain();
+    // set master gain to current masterMusicVolume
+    masterGainNode.gain.value = Math.max(MIN_GAIN, masterMusicVolume);
+    masterGainNode.connect(audioContext.destination);
+    usingWebAudio = true;
+  } catch (e) {
+    usingWebAudio = false;
+    // initial player UI state
+    try {
+      updatePlayPauseUI();
+      if (timeLabelEl) timeLabelEl.textContent = "— / —";
+    } catch (e) {}
+  }
+  return audioContext;
+}
+
+// Centralized helper to apply masterMusicVolume to current audio plumbing
+function applyMasterVolume() {
+  if (usingWebAudio && masterGainNode && audioContext) {
+    try {
+      masterGainNode.gain.setValueAtTime(Math.max(MIN_GAIN, masterMusicVolume), audioContext.currentTime);
+    } catch (e) {}
+  } else {
+    BG_PLAYLIST.forEach((a) => {
+      try {
+        a.volume = masterMusicVolume;
+      } catch (e) {}
+    });
+    try {
+      START_TRACK.volume = masterMusicVolume;
+    } catch (e) {}
+  }
+  try {
+    if (volumePercent) volumePercent.textContent = `${Math.round(masterMusicVolume * 100)}%`;
+  } catch (e) {}
+}
+
+// Small helpers for audio state
+function isWebAudioAvailable() {
+  return Boolean(usingWebAudio && audioContext && audioContext.state && audioContext.state !== "closed");
+}
+function getCurrentMusicVolume() {
+  return masterMusicVolume;
+}
+
+// removed getEffectiveMusicVolume(): use masterMusicVolume directly
+
+function initWebAudioForTrack(a) {
+  if (!a || a.__webAudioInit || !ensureAudioContext()) return;
+  try {
+    // Create MediaElementSource and per-track gain
+    const source = audioContext.createMediaElementSource(a);
+    const gain = audioContext.createGain();
+    gain.gain.value = 1.0; // per-track multiplier handled by masterGain
+    source.connect(gain);
+    gain.connect(masterGainNode);
+    a.__webAudioInit = true;
+    a.__webSource = source;
+    a.__webGain = gain;
+  } catch (e) {
+    // some browsers disallow createMediaElementSource in certain contexts
+    a.__webAudioInit = false;
+  }
+}
+
+function getGainNodeFor(a) {
+  if (!a) return null;
+  if (usingWebAudio && a.__webAudioInit && a.__webGain) return a.__webGain;
+  return null;
+}
+
+// Track label DOM
+const trackLabelEl = document.querySelector(".trackLabel");
+// musicIndicator removed — we previously used it as a visual crossfade indicator
+// Player UI elements
+const sfxVolumeSlider = document.querySelector("#sfxVolume");
+const musicPrevBtn = document.querySelector(".musicPrevBtn");
+const musicPlayPauseBtn = document.querySelector(".musicPlayPauseBtn");
+const musicNextBtn = document.querySelector(".musicNextBtn");
+const musicProgress = document.querySelector("#musicProgress");
+const timeLabelEl = document.querySelector(".timeLabel");
+
+// SFX WebAudio node
+let sfxGainNode = null;
+let sfxVolume = 1.0;
+const DUCKING_FACTOR = 0.25; // reduce SFX to 25% during crossfade
+const DUCK_MS = 300; // ducking ramp duration
+let progressLoopId = null;
+let isMusicPlaying = false;
+let audioUnlocked = false;
+let enableSoundBtn = null;
+
+// Unlock/resume audio on first user gesture if autoplay was blocked
+function attemptUnlockAudioOnce() {
+  if (audioUnlocked) return;
+  function unlock() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    try {
+      ensureAudioContext();
+    } catch (e) {
+      console.error("ensureAudioContext failed during unlock", e);
+    }
+    try {
+      if (audioContext && audioContext.state === "suspended") {
+        audioContext
+          .resume()
+          .then(() => console.debug("audioContext resumed via unlock gesture"))
+          .catch((e) => console.error("audioContext.resume failed during unlock", e));
+      }
+    } catch (e) {
+      console.error("audioContext resume exception during unlock:", e);
+    }
+    // If musicEnabled was true and nothing is playing, try to start the appropriate source
+    try {
+      if (musicEnabled) {
+        if (document.body.classList.contains("screen-start")) {
+          if (START_TRACK && START_TRACK.paused) playStartMusic({ restart: false });
+        } else {
+          if ((bgPlayer && bgPlayer.paused) || !bgPlayer) playBg({ restart: false });
+        }
+      }
+    } catch (e) {
+      console.error("unlock/start music failed", e);
+    }
+    // remove listeners
+    document.removeEventListener("click", unlock);
+    document.removeEventListener("keydown", unlock);
+  }
+  document.addEventListener("click", unlock, { once: true, passive: true });
+  document.addEventListener("keydown", unlock, { once: true, passive: true });
+}
+
+function showEnableSoundBtn() {
+  try {
+    if (!volumeControl) return;
+    if (enableSoundBtn) return;
+    enableSoundBtn = document.createElement("button");
+    enableSoundBtn.className = "enableSoundBtn";
+    enableSoundBtn.textContent = "Enable Sound";
+    enableSoundBtn.title = "Click to enable sound";
+    enableSoundBtn.style.marginTop = "6px";
+    enableSoundBtn.style.fontSize = "12px";
+    enableSoundBtn.style.padding = "6px 10px";
+    enableSoundBtn.addEventListener("click", () => {
+      try {
+        attemptUnlockAudioOnce();
+        if (audioContext && audioContext.state === "suspended") audioContext.resume().catch(() => {});
+        toggleMusicEnabled(true);
+      } catch (e) {
+        console.error("enableSoundBtn click failed", e);
+      }
+      try {
+        enableSoundBtn.style.display = "none";
+      } catch (e) {}
+    });
+    volumeControl.appendChild(enableSoundBtn);
+  } catch (e) {
+    console.error("showEnableSoundBtn failed", e);
+  }
+}
+
+function setTrackLabel(label) {
+  if (!trackLabelEl) return;
+  trackLabelEl.textContent = label || "—";
 }
 
 // boot-time init for start track + playlist
 function initMusic() {
   try {
     initBgPlaylist();
-  } catch {}
+  } catch (e) {}
   try {
     initStartTrack();
-  } catch {}
-}
-function playStartMusic() {
+  } catch (e) {}
   try {
+    initSfxNodes();
+  } catch (e) {}
+}
+
+function initSfxNodes() {
+  try {
+    ensureAudioContext();
+    if (!audioContext) return;
+    sfxGainNode = audioContext.createGain();
+    sfxGainNode.gain.value = Math.max(MIN_GAIN, sfxVolume);
+    sfxGainNode.connect(audioContext.destination);
+    // initialize existing SFX audio elements
+    Object.keys(Sounds).forEach((k) => {
+      const a = Sounds[k];
+      if (!a) return;
+      try {
+        const src = audioContext.createMediaElementSource(a);
+        src.connect(sfxGainNode);
+        a.__sfxWebAudio = true;
+      } catch (e) {
+        // fallback: nothing to do
+        a.__sfxWebAudio = false;
+      }
+    });
+  } catch (e) {
+    // fallback: ignore
+  }
+}
+
+function formatTime(sec) {
+  if (!isFinite(sec) || sec <= 0) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function updateProgressUI() {
+  const el = document.body.classList.contains("screen-start") ? START_TRACK : bgPlayer;
+  if (!el) {
+    try {
+      if (timeLabelEl) timeLabelEl.textContent = "— / —";
+      if (musicProgress) {
+        musicProgress.max = 100;
+        musicProgress.value = 0;
+      }
+    } catch (e) {}
+    return;
+  }
+  try {
+    const dur = el.duration || 0;
+    const cur = el.currentTime || 0;
+    if (dur && !isNaN(dur) && dur > 0) {
+      musicProgress.max = dur;
+      musicProgress.value = cur;
+      timeLabelEl.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+    } else {
+      // unknown duration
+      musicProgress.max = 100;
+      musicProgress.value = Math.min(100, cur % 100);
+      timeLabelEl.textContent = `${formatTime(cur)} / —`;
+    }
+  } catch (e) {}
+}
+
+function progressLoop() {
+  try {
+    updateProgressUI();
+  } catch (e) {}
+  progressLoopId = requestAnimationFrame(progressLoop);
+}
+function startProgressLoop() {
+  if (!progressLoopId) progressLoopId = requestAnimationFrame(progressLoop);
+}
+function stopProgressLoop() {
+  if (progressLoopId) {
+    cancelAnimationFrame(progressLoopId);
+    progressLoopId = null;
+  }
+}
+
+function updatePlayPauseUI() {
+  try {
+    if (!musicPlayPauseBtn) return;
+    musicPlayPauseBtn.textContent = isMusicPlaying ? "⏸" : "⏵";
+  } catch (e) {}
+}
+
+function previousTrack() {
+  if (!BG_PLAYLIST.length) return;
+  if (screen !== Screens.GAME && screen !== Screens.SCORE) return; // only control playlist in-game/score
+  playTrackAtIndex(bgIndex - 1, { restart: true });
+}
+function nextTrack() {
+  if (!BG_PLAYLIST.length) return;
+  if (screen !== Screens.GAME && screen !== Screens.SCORE) return;
+  playTrackAtIndex(bgIndex + 1, { restart: true });
+}
+function togglePlayPause() {
+  console.debug("togglePlayPause() called", { musicEnabled, isMusicPlaying, screen });
+  // If music is currently disabled via the global toggle, enable it on explicit Play request
+  if (!musicEnabled) {
+    console.debug("togglePlayPause: music was disabled — auto-enabling");
+    try {
+      toggleMusicEnabled(true);
+    } catch (e) {
+      console.error("Failed to auto-enable music in togglePlayPause", e);
+    }
+  }
+  // Ensure AudioContext exists and is resumed — this is a user gesture so resume should be allowed
+  try {
+    ensureAudioContext();
+    if (audioContext && audioContext.state === "suspended") {
+      audioContext
+        .resume()
+        .then(() => console.debug("audioContext resumed via togglePlayPause"))
+        .catch((e) => console.error("audioContext resume failed (togglePlayPause)", e));
+    }
+  } catch (e) {
+    console.error("ensureAudioContext/resume failed in togglePlayPause", e);
+  }
+  if (document.body.classList.contains("screen-start")) {
+    if (START_TRACK && !START_TRACK.paused) pauseStartMusic();
+    else playStartMusic({ restart: false });
+  } else {
+    if (bgPlayer && !bgPlayer.paused) pauseBg();
+    else playBg({ restart: false });
+  }
+}
+
+function toggleGamePause() {
+  if (screen !== Screens.GAME) return;
+  if (isPaused) {
+    // resume
+    isPaused = false;
+    try {
+      if (pauseBtn) {
+        pauseBtn.textContent = "Pause";
+        pauseBtn.setAttribute("aria-pressed", "false");
+      }
+    } catch (e) {}
+    lastTime = performance.now();
+    startLoop();
+    // Do not change music playback when toggling game pause anymore
+    try {
+      if (pausedOverlayEl) pausedOverlayEl.classList.remove("active");
+      if (pausedOverlayEl) pausedOverlayEl.setAttribute("aria-hidden", "true");
+    } catch (e) {}
+  } else {
+    // pause
+    isPaused = true;
+    try {
+      if (pauseBtn) {
+        pauseBtn.textContent = "Resume";
+        pauseBtn.setAttribute("aria-pressed", "true");
+      }
+    } catch (e) {}
+    try {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+    } catch (e) {}
+    // Do not pause music when pausing the game
+    try {
+      if (pausedOverlayEl) pausedOverlayEl.classList.add("active");
+      if (pausedOverlayEl) pausedOverlayEl.setAttribute("aria-hidden", "false");
+    } catch (e) {}
+  }
+}
+
+function setSfxVolume(v) {
+  const vol = Math.min(1, Math.max(0, Number(v)));
+  sfxVolume = vol;
+  try {
+    localStorage.setItem("snake:sfxVolume", String(sfxVolume));
+  } catch (e) {}
+  if (usingWebAudio && sfxGainNode && audioContext) {
+    try {
+      sfxGainNode.gain.setValueAtTime(Math.max(MIN_GAIN, sfxVolume), audioContext.currentTime);
+    } catch (e) {}
+  } else {
+    Object.keys(Sounds).forEach((k) => {
+      try {
+        if (Sounds[k]) Sounds[k].volume = sfxVolume;
+      } catch (e) {}
+    });
+  }
+}
+
+function duckSfx(ducked = true) {
+  if (usingWebAudio && audioContext && sfxGainNode && sfxGainNode.gain) {
+    try {
+      const now = audioContext.currentTime;
+      const target = ducked ? Math.max(MIN_GAIN, sfxVolume * DUCKING_FACTOR) : Math.max(MIN_GAIN, sfxVolume);
+      sfxGainNode.gain.cancelScheduledValues(now);
+      sfxGainNode.gain.exponentialRampToValueAtTime(target, now + DUCK_MS / 1000);
+    } catch (e) {}
+  } else {
+    // fallback: adjust HTMLAudio volumes directly
+    Object.keys(Sounds).forEach((k) => {
+      try {
+        if (Sounds[k]) Sounds[k].volume = ducked ? sfxVolume * DUCKING_FACTOR : sfxVolume;
+      } catch (e) {}
+    });
+  }
+}
+function playStartMusic(opts = { restart: true }) {
+  try {
+    console.debug("playStartMusic() called", { opts, musicEnabled, START_TRACKReadyState: START_TRACK && START_TRACK.readyState });
     if (!START_TRACK) return;
-    START_TRACK.currentTime = 0;
-    START_TRACK.play().catch(() => {});
-  } catch {}
+    // initialize web audio for the start track if available
+    initWebAudioForTrack(START_TRACK);
+    try {
+      if (usingWebAudio && audioContext && audioContext.state === "suspended") {
+        audioContext.resume().catch(() => {});
+      }
+    } catch (e) {}
+    if (opts.restart) START_TRACK.currentTime = 0;
+    if (usingWebAudio && START_TRACK.__webGain) {
+      // ramp immediate to master volume
+      START_TRACK.__webGain.gain.setValueAtTime(Math.max(MIN_GAIN, masterMusicVolume), audioContext.currentTime);
+    } else {
+      START_TRACK.volume = masterMusicVolume;
+    }
+    try {
+      console.debug("Attempting START_TRACK.play()", {
+        paused: START_TRACK.paused,
+        currentTime: START_TRACK.currentTime,
+        duration: START_TRACK.duration,
+        readyState: START_TRACK.readyState,
+        masterMusicVolume,
+      });
+      START_TRACK.play().catch((e) => {
+        console.error("START_TRACK play() rejected:", e, {
+          paused: START_TRACK.paused,
+          currentTime: START_TRACK.currentTime,
+          duration: START_TRACK.duration,
+          readyState: START_TRACK.readyState,
+        });
+        try {
+          // If autoplay was blocked, attempt to unlock on first gesture
+          attemptUnlockAudioOnce();
+        } catch (e) {}
+      });
+    } catch (e) {
+      console.error("START_TRACK.play() call threw:", e);
+    }
+    try {
+      START_TRACK.onplay = () => {
+        isMusicPlaying = true;
+        updatePlayPauseUI();
+        startProgressLoop();
+      };
+      START_TRACK.onpause = () => {
+        isMusicPlaying = false;
+        updatePlayPauseUI();
+        stopProgressLoop();
+      };
+    } catch (e) {}
+    isMusicPlaying = true;
+    updatePlayPauseUI();
+    startProgressLoop();
+    setTrackLabel(START_TRACK.dataset.trackLabel);
+    // On the Start screen, the START_TRACK should loop and not chain into the in-game playlist.
+    // We intentionally do not schedule a crossfade into the BG playlist here.
+    try {
+      START_TRACK.loop = true;
+      START_TRACK.onended = null;
+    } catch (e) {}
+  } catch (e) {}
 }
 
 function pauseStartMusic() {
   try {
     if (!START_TRACK) return;
     START_TRACK.pause();
-  } catch {}
+    clearScheduledCrossfade();
+    isMusicPlaying = false;
+    updatePlayPauseUI();
+    stopProgressLoop();
+    try {
+      duckSfx(false);
+    } catch (e) {}
+  } catch (e) {}
 }
 
 function stopStartMusic() {
@@ -253,14 +765,268 @@ function stopStartMusic() {
     if (!START_TRACK) return;
     START_TRACK.pause();
     START_TRACK.currentTime = 0;
-  } catch {}
+    clearScheduledCrossfade();
+    START_TRACK.onended = null;
+    setTrackLabel("—");
+    try {
+      duckSfx(false);
+    } catch (e) {}
+  } catch (e) {}
 }
 
 function initStartTrack() {
   try {
     START_TRACK.preload = "auto";
-    START_TRACK.loop = true; // loop on start screen
-  } catch {}
+    START_TRACK.loop = true; // loop on the Start screen; do not chain into playlist
+  } catch (e) {}
+}
+
+// Fade / Crossfade helpers
+let crossfadeTimer = null; // scheduled crossfade timeout
+let fadeIntervalId = null; // interval id for active fade
+function clearScheduledCrossfade() {
+  if (crossfadeTimer) {
+    clearTimeout(crossfadeTimer);
+    crossfadeTimer = null;
+  }
+  if (fadeIntervalId) {
+    clearInterval(fadeIntervalId);
+    fadeIntervalId = null;
+  }
+  // Cancel any scheduled ramps on web audio gain nodes
+  if (usingWebAudio && audioContext) {
+    try {
+      const now = audioContext.currentTime;
+      BG_PLAYLIST.forEach((a) => {
+        if (a && a.__webGain && a.__webGain.gain && a.__webGain.gain.cancelScheduledValues) {
+          a.__webGain.gain.cancelScheduledValues(now);
+        }
+      });
+      if (START_TRACK && START_TRACK.__webGain && START_TRACK.__webGain.gain && START_TRACK.__webGain.gain.cancelScheduledValues) {
+        START_TRACK.__webGain.gain.cancelScheduledValues(now);
+      }
+    } catch (e) {}
+  }
+  try {
+    duckSfx(false);
+  } catch (e) {}
+}
+
+function crossfade(out, ina, dur = CROSSFADE_MS) {
+  clearScheduledCrossfade();
+  try {
+    duckSfx(true);
+  } catch (e) {}
+  if (!out || !ina || dur <= 0) return;
+  // If using WebAudio, use exponentialRampToValueAtTime on GainNodes
+  if (usingWebAudio && audioContext) {
+    try {
+      initWebAudioForTrack(out);
+      initWebAudioForTrack(ina);
+      const outGain = out.__webGain;
+      const inGain = ina.__webGain;
+      if (!outGain || !inGain) throw new Error("web gain missing");
+      // schedule ramps in seconds
+      const now = audioContext.currentTime;
+      const durSec = dur / 1000;
+      // start ina from a small epsilon
+      inGain.gain.cancelScheduledValues(now);
+      outGain.gain.cancelScheduledValues(now);
+      inGain.gain.setValueAtTime(Math.max(MIN_GAIN, 0.0001), now);
+      outGain.gain.setValueAtTime(Math.max(MIN_GAIN, masterMusicVolume), now);
+      ina.currentTime = 0;
+      try {
+        console.debug("Attempting crossfade ina.play()", {
+          paused: ina.paused,
+          currentTime: ina.currentTime,
+          duration: ina.duration,
+          readyState: ina.readyState,
+          masterMusicVolume,
+        });
+        ina.play().catch((e) => {
+          console.error("crossfade ina.play() rejected:", e, {
+            paused: ina.paused,
+            currentTime: ina.currentTime,
+            duration: ina.duration,
+            readyState: ina.readyState,
+          });
+          try {
+            attemptUnlockAudioOnce();
+          } catch (e) {}
+        });
+      } catch (e) {
+        console.error("ina.play() call threw:", e);
+      }
+      // musicIndicator removed - no-op
+      // schedule exponential ramp to master volume and to near-zero
+      inGain.gain.exponentialRampToValueAtTime(Math.max(MIN_GAIN, masterMusicVolume), now + durSec);
+      outGain.gain.exponentialRampToValueAtTime(MIN_GAIN, now + durSec);
+
+      // schedule cleanup after the fade
+      crossfadeTimer = setTimeout(() => {
+        try {
+          out.pause();
+          out.currentTime = 0;
+          // ensure ina is set to master volume
+          inGain.gain.cancelScheduledValues(audioContext.currentTime);
+          inGain.gain.setValueAtTime(Math.max(MIN_GAIN, masterMusicVolume), audioContext.currentTime);
+          // schedule next crossfade if ina is part of playlist
+          const idx = BG_PLAYLIST.indexOf(ina);
+          if (idx >= 0) {
+            bgIndex = idx;
+            bgPlayer = ina;
+            const next = BG_PLAYLIST[(idx + 1) % BG_PLAYLIST.length];
+            scheduleCrossfade(ina, next);
+          }
+          setTrackLabel(ina.dataset.trackLabel);
+          // musicIndicator removed - no-op
+          try {
+            duckSfx(false);
+          } catch (e) {}
+        } catch (e) {}
+        crossfadeTimer = null;
+      }, dur);
+      return;
+    } catch (e) {
+      // fallback to HTMLAudio linear fade if WebAudio fails
+    }
+  }
+  // ensure target volumes are zeroed before starting
+  try {
+    ina.volume = 0;
+    ina.currentTime = 0;
+    ina.play().catch(() => {});
+  } catch (e) {}
+
+  const start = performance.now();
+  fadeIntervalId = setInterval(() => {
+    const t = performance.now() - start;
+    const frac = Math.min(1, t / dur);
+    try {
+      const effective = masterMusicVolume;
+      ina.volume = effective * frac;
+      out.volume = effective * (1 - frac);
+    } catch (e) {}
+    if (frac === 1) {
+      clearScheduledCrossfade();
+      try {
+        out.pause();
+        out.currentTime = 0;
+      } catch (e) {}
+      try {
+        ina.volume = masterMusicVolume;
+      } catch (e) {}
+      // schedule next crossfade for ina->next (if ina is part of BG_PLAYLIST)
+      const idx = BG_PLAYLIST.indexOf(ina);
+      if (idx >= 0) {
+        bgIndex = idx;
+        bgPlayer = ina;
+        const next = BG_PLAYLIST[(idx + 1) % BG_PLAYLIST.length];
+        scheduleCrossfade(ina, next);
+      }
+      // update label for the new track
+      setTrackLabel(ina.dataset.trackLabel);
+      try {
+        duckSfx(false);
+      } catch (e) {}
+    }
+  }, 60);
+}
+
+function scheduleCrossfade(current, next) {
+  clearScheduledCrossfade();
+  // if next is missing, nothing to fade to
+  if (!current || !next) return;
+  // If duration is not available, fall back to ended handler
+  try {
+    const dur = current.duration;
+    if (!dur || isNaN(dur) || dur <= CROSSFADE_MS) return; // no space for crossfade
+    const remaining = (dur - current.currentTime) * 1000;
+    const startDelay = Math.max(0, remaining - CROSSFADE_MS);
+    crossfadeTimer = setTimeout(() => {
+      crossfade(current, next, Math.min(CROSSFADE_MS, dur * 1000));
+    }, startDelay);
+  } catch (e) {
+    // ignore scheduling if duration not available
+  }
+}
+
+function playTrackAtIndex(i, opts = { restart: true }) {
+  if (!BG_PLAYLIST.length) return;
+  const idx = ((i % BG_PLAYLIST.length) + BG_PLAYLIST.length) % BG_PLAYLIST.length;
+  console.debug("playTrackAtIndex() -> idx", { idx, bgIndex, bgPlayerReadyState: bgPlayer && bgPlayer.readyState });
+  const cur = BG_PLAYLIST[idx];
+  if (!cur) return;
+  try {
+    clearScheduledCrossfade();
+    // pause and cleanup prior background player if different
+    try {
+      if (bgPlayer && bgPlayer !== cur) {
+        bgPlayer.pause();
+        try {
+          bgPlayer.currentTime = 0;
+        } catch (e) {}
+      }
+    } catch (e) {}
+    bgIndex = idx;
+    bgPlayer = cur;
+    if (opts.restart) cur.currentTime = 0;
+    initWebAudioForTrack(cur);
+    try {
+      if (usingWebAudio && audioContext && audioContext.state === "suspended") {
+        audioContext.resume().catch(() => {});
+      }
+    } catch (e) {}
+    if (usingWebAudio && cur.__webGain) {
+      cur.__webGain.gain.setValueAtTime(Math.max(MIN_GAIN, masterMusicVolume), audioContext.currentTime);
+    } else {
+      cur.volume = masterMusicVolume;
+    }
+    try {
+      console.debug("Attempting bg cur.play()", {
+        idx: idx,
+        paused: cur.paused,
+        currentTime: cur.currentTime,
+        duration: cur.duration,
+        readyState: cur.readyState,
+        masterMusicVolume,
+      });
+      cur.play().catch((e) => {
+        console.error("BG_PLAYLIST cur.play() rejected:", e, {
+          idx: idx,
+          paused: cur.paused,
+          currentTime: cur.currentTime,
+          duration: cur.duration,
+          readyState: cur.readyState,
+        });
+        try {
+          attemptUnlockAudioOnce();
+        } catch (e) {}
+      });
+    } catch (e) {
+      console.error("cur.play() call threw:", e, { idx });
+    }
+    // attach update hooks
+    try {
+      cur.onplay = () => {
+        isMusicPlaying = true;
+        updatePlayPauseUI();
+        startProgressLoop();
+      };
+      cur.onpause = () => {
+        isMusicPlaying = false;
+        updatePlayPauseUI();
+        stopProgressLoop();
+      };
+    } catch (e) {}
+    setTrackLabel(cur.dataset.trackLabel);
+    isMusicPlaying = true;
+    updatePlayPauseUI();
+    startProgressLoop();
+    // schedule crossfade to next
+    const next = BG_PLAYLIST[(idx + 1) % BG_PLAYLIST.length];
+    scheduleCrossfade(cur, next);
+  } catch (e) {}
 }
 
 // Play/pause helpers for background music
@@ -268,18 +1034,21 @@ function playBg(opts = { restart: true }) {
   if (!BG_PLAYLIST.length) return;
   if (!bgPlayer) initBgPlaylist();
   if (opts.restart) bgIndex = 0;
-  bgPlayer = BG_PLAYLIST[bgIndex];
-  try {
-    if (opts.restart) bgPlayer.currentTime = 0;
-    bgPlayer.play().catch(() => {});
-  } catch {}
+  playTrackAtIndex(bgIndex, opts);
 }
 
 function pauseBg() {
   if (bgPlayer)
     try {
       bgPlayer.pause();
-    } catch {}
+      clearScheduledCrossfade();
+      isMusicPlaying = false;
+      updatePlayPauseUI();
+      stopProgressLoop();
+      try {
+        duckSfx(false);
+      } catch (e) {}
+    } catch (e) {}
 }
 
 function stopBg() {
@@ -287,7 +1056,15 @@ function stopBg() {
     try {
       bgPlayer.pause();
       bgPlayer.currentTime = 0;
-    } catch {}
+      clearScheduledCrossfade();
+      setTrackLabel("—");
+      isMusicPlaying = false;
+      updatePlayPauseUI();
+      stopProgressLoop();
+      try {
+        duckSfx(false);
+      } catch (e) {}
+    } catch (e) {}
 }
 
 // Fixed SFX volume (tweak to taste)
@@ -299,25 +1076,37 @@ const SFX_VOLUME = 1.0;
 // Music-only volume
 function setMusicVolume(v) {
   const vol = Math.min(1, Math.max(0, Number(v)));
-  BG_PLAYLIST.forEach((a) => {
-    try {
-      a.volume = vol;
-    } catch {}
-  });
+  masterMusicVolume = vol;
   try {
-    START_TRACK.volume = vol;
-  } catch {}
+    localStorage.setItem("snake:musicVolume", String(masterMusicVolume));
+  } catch (e) {}
+  // Centralized application
+  applyMasterVolume();
 }
 
+// NOTE: music ceiling (musicVolumeCeil) removed — use masterMusicVolume directly.
+
 // Init + live updates (Start/Score screens)
-setMusicVolume(volumeSlider?.value || 0.1);
+try {
+  const storedVol = localStorage.getItem("snake:musicVolume");
+  if (storedVol !== null) masterMusicVolume = Number(storedVol);
+} catch (e) {}
+setMusicVolume(volumeSlider?.value ?? masterMusicVolume);
 volumeSlider?.addEventListener("input", (e) => setMusicVolume(e.target.value));
+
+try {
+  const storedSfx = localStorage.getItem("snake:sfxVolume");
+  if (storedSfx !== null) sfxVolume = Number(storedSfx);
+} catch (e) {}
+if (sfxVolumeSlider) sfxVolumeSlider.value = String(sfxVolume);
+setSfxVolume(sfxVolume);
+sfxVolumeSlider?.addEventListener("input", (e) => setSfxVolume(e.target.value));
 
 // Load persisted music preference (defaults to true)
 try {
   const raw = localStorage.getItem("snake:musicEnabled");
   if (raw !== null) musicEnabled = raw === "true";
-} catch {}
+} catch (e) {}
 // Apply initial UI state for toggle controls
 updateMusicToggleUI();
 
@@ -349,6 +1138,7 @@ let dir = { x: 1, y: 0 };
 let dirQueue = []; // up to 2 pending directions
 let hasStarted = false; // wait for first input
 let isGameOver = false;
+let isPaused = false; // gameplay paused state
 let gameOverReason = "";
 
 // ---- High scores (module with medals) ----
@@ -359,7 +1149,7 @@ const Scoreboard = (() => {
   function load(b) {
     try {
       return JSON.parse(localStorage.getItem(KEY(b))) || [];
-    } catch {
+    } catch (e) {
       return [];
     }
   }
@@ -411,6 +1201,13 @@ function enterStartScreen() {
   show(scoreListContainer);
   hide(toggleGridBtn);
   show(volumeControl);
+  // ensure game-only controls are hidden on start screen
+  try {
+    hide(pauseBtn);
+    hide(toggleGridBtn);
+    hide(restartBtn);
+    hide(playAgainBtn);
+  } catch (e) {}
   document.body.classList.add("screen-start");
   document.body.classList.remove("screen-game");
   document.body.classList.remove("screen-score");
@@ -420,8 +1217,31 @@ function enterStartScreen() {
   try {
     // stop in-game playlist and start the dedicated start-screen music
     stopBg();
-    if (musicEnabled) playStartMusic();
-  } catch {}
+    if (musicEnabled) {
+      console.debug("enterStartScreen: starting START_TRACK (musicEnabled)");
+      playStartMusic({ restart: true });
+      // In case autoplay was blocked by the browser, attempt to unlock audio on first user gesture
+      attemptUnlockAudioOnce();
+      // show an explicit enable-sound button if audio still suspended after a short delay
+      setTimeout(() => {
+        try {
+          if (!isMusicPlaying && (!audioContext || (audioContext && audioContext.state === "suspended"))) {
+            showEnableSoundBtn();
+          }
+        } catch (e) {}
+      }, 500);
+    } else {
+      console.debug("enterStartScreen: musicDisabled, not starting START_TRACK");
+    }
+  } catch (e) {}
+  try {
+    if (pauseBtn) {
+      pauseBtn.setAttribute("aria-hidden", "true");
+      try {
+        hide(pauseBtn);
+      } catch (e) {}
+    }
+  } catch (e) {}
 
   const lbl = getSelectedSpeedLabel();
   if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
@@ -437,6 +1257,9 @@ function enterGameScreen(opts = { restartMusic: true }) {
   hide(playAgainBtn);
   hide(restartBtn);
   hide(scoreListContainer);
+  try {
+    show(pauseBtn);
+  } catch (e) {}
   document.body.classList.add("screen-game");
   document.body.classList.remove("screen-start");
   document.body.classList.remove("screen-score");
@@ -462,11 +1285,39 @@ function enterGameScreen(opts = { restartMusic: true }) {
   try {
     // Stop any start-screen music, then start in-game playlist if enabled
     stopStartMusic();
-    if (musicEnabled && opts.restartMusic) playBg({ restart: true });
-  } catch {}
+    if (musicEnabled && opts.restartMusic) {
+      console.debug("enterGameScreen: starting BG playlist (musicEnabled)");
+      playBg({ restart: true });
+      // In case autoplay was blocked, attach unlock handler to start on first user gesture
+      attemptUnlockAudioOnce();
+      setTimeout(() => {
+        try {
+          if (!isMusicPlaying && (!audioContext || (audioContext && audioContext.state === "suspended"))) {
+            showEnableSoundBtn();
+          }
+        } catch (e) {}
+      }, 500);
+    } else {
+      console.debug("enterGameScreen: musicDisabled or opts.restartMusic false; not starting BG playlist", { musicEnabled, opts });
+    }
+  } catch (e) {}
 
   lastTime = performance.now();
   acc = 0;
+  // clear paused state
+  isPaused = false;
+  try {
+    if (pauseBtn) {
+      pauseBtn.textContent = "Pause";
+      pauseBtn.setAttribute("aria-pressed", "false");
+      try {
+        show(pauseBtn);
+      } catch (e) {}
+    }
+  } catch (e) {}
+  try {
+    if (pauseBtn) pauseBtn.setAttribute("aria-hidden", "false");
+  } catch (e) {}
   startLoop();
 }
 
@@ -478,6 +1329,9 @@ function enterScoreScreen() {
   show(volumeControl);
   show(canvas);
   document.body.classList.add("screen-score");
+  try {
+    if (pauseBtn) pauseBtn.setAttribute("aria-hidden", "true");
+  } catch (e) {}
   document.body.classList.remove("screen-start");
   document.body.classList.remove("screen-game");
 }
@@ -552,7 +1406,7 @@ function update() {
     try {
       Sounds.eat.currentTime = 0;
       Sounds.eat.play().catch(() => {});
-    } catch {}
+    } catch (e) {}
     spawnFood();
   } else {
     snake.pop();
@@ -793,12 +1647,12 @@ function render() {
 
   // HUD
   ctx.fillStyle = "#eee";
-  ctx.font = setHudFont(18); // main score
+  ctx.font = setHudFont(18);
   ctx.fillText(`Score: ${score}`, 12, 26);
 
   if (DEBUG.enabled) {
     ctx.save();
-    ctx.font = setHudFont(12, true); // tiny labels
+    ctx.font = setHudFont(12, true);
     ctx.fillStyle = "rgba(255,255,255,0.9)";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -860,7 +1714,7 @@ function gameOver(reason) {
   try {
     Sounds.gameOver.currentTime = 0;
     Sounds.gameOver.play().catch(() => {});
-  } catch {}
+  } catch (e) {}
   isGameOver = true;
   gameOverReason = reason || "Game Over";
 
@@ -871,7 +1725,7 @@ function gameOver(reason) {
   hide(scoreListContainer);
   try {
     pauseBg();
-  } catch {}
+  } catch (e) {}
 
   Scoreboard.push({ name: usernameInput?.value?.trim() || "Anonymous", value: score }, currentSpeedLabel);
 }
@@ -880,7 +1734,7 @@ function gameWon() {
   try {
     Sounds.gameWon.currentTime = 0;
     Sounds.gameWon.play().catch(() => {});
-  } catch {}
+  } catch (e) {}
   isGameOver = true;
   gameOverReason = "You won!";
 
@@ -891,13 +1745,28 @@ function gameWon() {
   hide(scoreListContainer);
   try {
     pauseBg();
-  } catch {}
+  } catch (e) {}
 
   Scoreboard.push({ name: usernameInput?.value?.trim() || "Anonymous", value: score }, currentSpeedLabel);
 }
 
 // ---- Input ----
 window.addEventListener("keydown", (e) => {
+  // Prevent hotkeys if the focus is on an input/textarea
+  try {
+    const f = document.activeElement;
+    if (f && (f.tagName === "INPUT" || f.tagName === "TEXTAREA" || f.isContentEditable)) return;
+  } catch (e) {}
+  // music toggle (play/pause)
+  if (e.key === "m" || e.key === "M") {
+    togglePlayPause();
+    return;
+  }
+  // game pause toggle
+  if (e.key === "p" || e.key === "P") {
+    toggleGamePause();
+    return;
+  }
   let nd;
   switch (e.key) {
     case "ArrowUp":
@@ -921,26 +1790,26 @@ window.addEventListener("keydown", (e) => {
       nd = { x: 1, y: 0 };
       break;
     // Debug toggles
-    // case "l":
-    // case "L":
-    //   DEBUG.enabled = !DEBUG.enabled;
-    //   if (!DEBUG.enabled) {
-    //     DEBUG.paused = false;
-    //     DEBUG.stepOnce = false;
-    //   }
-    //   return;
-    // case "p":
-    // case "P":
-    //   if (screen === Screens.GAME && DEBUG.enabled) {
-    //     DEBUG.paused = !DEBUG.paused;
-    //   }
-    //   return;
-    // case "n":
-    // case "N":
-    //   if (screen === Screens.GAME && DEBUG.enabled && DEBUG.paused) {
-    //     DEBUG.stepOnce = true; // advance one update on next loop
-    //   }
-    //   return;
+    /* case "l":
+    case "L":
+      DEBUG.enabled = !DEBUG.enabled;
+      if (!DEBUG.enabled) {
+        DEBUG.paused = false;
+        DEBUG.stepOnce = false;
+      }
+      return;
+    case "p":
+    case "P":
+      if (screen === Screens.GAME && DEBUG.enabled) {
+        DEBUG.paused = !DEBUG.paused;
+      }
+      return;
+    case "n":
+    case "N":
+      if (screen === Screens.GAME && DEBUG.enabled && DEBUG.paused) {
+        DEBUG.stepOnce = true; // advance one update on next loop
+      }
+      return; */
 
     case "g":
     case "G":
@@ -972,10 +1841,20 @@ startBtn.onclick = () => {
     updateStartButtonState();
     return; // don’t start without a name
   }
+  try {
+    ensureAudioContext();
+    if (audioContext && audioContext.state === "suspended") {
+      audioContext
+        .resume()
+        .then(() => console.debug("audioContext resumed via start button"))
+        .catch((e) => console.error("audioContext resume failed (start button)", e));
+    }
+  } catch (e) {
+    console.error("ensureAudioContext/resume via start btn failed", e);
+  }
   enterGameScreen();
 };
 playAgainBtn.onclick = () => {
-  // Resume background music and continue where it left off when replaying
   if (musicEnabled) playBg({ restart: false });
   enterGameScreen({ restartMusic: false });
 };
@@ -985,11 +1864,9 @@ resetScoreboardBtn.onclick = () => {
   Scoreboard.display(currentSpeedLabel);
 };
 
-// Difficulty pills (single source of truth)
 if (difficultyPills?.length) {
   difficultyPills.forEach((btn) => {
     btn.addEventListener("click", () => {
-      // toggle selected state
       difficultyPills.forEach((b) => {
         b.classList.remove("selected");
         b.setAttribute("aria-checked", "false");
@@ -1030,11 +1907,75 @@ function getSelectedSpeedLabel() {
 (function boot() {
   try {
     initMusic();
-  } catch {}
-  // re-apply configured music volume so START_TRACK gets the value
+  } catch (e) {}
   try {
-    setMusicVolume(volumeSlider?.value || 0.1);
-  } catch {}
+    localStorage.removeItem("snake:musicCeil");
+  } catch (e) {}
+  try {
+    if (volumeSlider) volumeSlider.value = String(masterMusicVolume);
+    setMusicVolume(volumeSlider?.value ?? masterMusicVolume);
+    try {
+      if (volumePercent) volumePercent.textContent = `${Math.round(masterMusicVolume * 100)}%`;
+    } catch (e) {}
+  } catch (e) {}
   updateStartButtonState();
+  try {
+    console.debug("boot: initial audio state", {
+      musicEnabled,
+      masterMusicVolume,
+      sfxVolume,
+      audioContextState: audioContext && audioContext.state,
+    });
+  } catch (e) {}
   enterStartScreen();
+  try {
+    hide(pauseBtn);
+    hide(toggleGridBtn);
+    hide(playAgainBtn);
+    hide(restartBtn);
+  } catch (e) {}
+  try {
+    if (musicPrevBtn) {
+      console.debug("Wiring musicPrevBtn click handler");
+      musicPrevBtn.addEventListener("click", () => {
+        try {
+          if (bgPlayer && !bgPlayer.paused) {
+            bgPlayer.pause();
+            bgPlayer.currentTime = 0;
+          }
+        } catch (e) {}
+        previousTrack();
+      });
+    }
+    if (musicNextBtn) {
+      console.debug("Wiring musicNextBtn click handler");
+      musicNextBtn.addEventListener("click", () => {
+        try {
+          if (bgPlayer && !bgPlayer.paused) {
+            bgPlayer.pause();
+            bgPlayer.currentTime = 0;
+          }
+        } catch (e) {}
+        nextTrack();
+      });
+    }
+    if (musicPlayPauseBtn) {
+      console.debug("Wiring musicPlayPauseBtn click handler");
+      musicPlayPauseBtn.addEventListener("click", togglePlayPause);
+    }
+    if (musicProgress) {
+      console.debug("Wiring musicProgress input handler");
+      musicProgress.addEventListener("input", (e) => {
+        try {
+          const el = document.body.classList.contains("screen-start") ? START_TRACK : bgPlayer;
+          if (!el) return;
+          const v = Number(e.target.value);
+          if (!isNaN(v)) el.currentTime = Math.min(el.duration || Infinity, v);
+        } catch (e) {}
+      });
+    }
+  } catch (e) {}
+  try {
+    pauseBtn && pauseBtn.addEventListener("click", toggleGamePause);
+  } catch (e) {}
 })();

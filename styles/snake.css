@@ -59,6 +59,7 @@ body {
   width: 100%;
   height: 46px;
   line-height: 46px;
+  background-color: rgba(255, 255, 255, 0.8);
 }
 
 /* Start Container */
@@ -139,8 +140,30 @@ button:active {
 
 .toggleGridBtn {
   position: absolute;
-  top: 10px;
+  top: 64px; /* moved below the new top-right music controls */
   right: 10px;
+}
+
+/* Move Toggle Grid, Play Again and Return to Menu to top-left and stack them vertically on Game screen */
+body.screen-game .toggleGridBtn,
+body.screen-game .playAgainBtn,
+body.screen-game .restartBtn {
+  left: 10px !important;
+  right: auto !important;
+  position: absolute;
+  z-index: 300;
+  display: block;
+}
+body.screen-game .toggleGridBtn {
+  top: 10px;
+}
+body.screen-game .playAgainBtn {
+  top: 54px;
+  transform: none;
+  left: 10px;
+}
+body.screen-game .restartBtn {
+  top: 98px;
 }
 
 .resetScoreboardBtn {
@@ -152,7 +175,7 @@ button:active {
 
 .volumeControl {
   position: absolute;
-  top: 120px;
+  top: 10px;
   right: 10px;
   display: flex;
   flex-direction: column;
@@ -162,6 +185,58 @@ button:active {
   background: rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   z-index: 220; /* sit above the canvas/frame */
+  width: 220px;
+  max-width: calc(100vw - 28px);
+}
+
+.musicControls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.musicProgressRow {
+  display: flex;
+  flex-direction: column; /* stack progress and time vertically */
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+}
+.musicProgressRow input[type="range"] {
+  width: 100%;
+}
+.timeLabel {
+  font-size: 11px;
+  min-width: 56px;
+  text-align: center;
+}
+.musicPrevBtn,
+.musicNextBtn,
+.musicPlayPauseBtn {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+/* Pause button (game-level) */
+.pauseBtn {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.pauseBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.musicPrevBtn:hover,
+.musicNextBtn:hover,
+.musicPlayPauseBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* Music toggle button (compact) */
@@ -180,9 +255,66 @@ button:active {
   width: 140px;
 }
 
+/* removed musicCeil control */
+
+.trackLabel {
+  font-size: 11px;
+  opacity: 0.9;
+  margin-top: 6px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 4px 8px;
+  border-radius: 6px;
+  min-width: 140px;
+  text-align: center;
+}
+
+/* Scrolling wrapper for 'Now playing' track */
+.trackScroll {
+  width: 180px;
+  overflow: hidden;
+  display: inline-block;
+}
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.trackScroll .trackLabel {
+  display: inline-block;
+  white-space: nowrap;
+  animation: scroll-left 12s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trackScroll .trackLabel {
+    animation: none;
+  }
+}
+
+.musicIndicator {
+  display: none;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .musicToggleBtn.inGame {
   position: absolute;
-  top: 8px;
+  top: 54px; /* shift below top-right volume control */
   right: 8px;
   z-index: 120;
   min-width: 84px;
@@ -214,6 +346,48 @@ button:active {
 body.screen-game .musicToggleBtn.inGame,
 body.screen-score .musicToggleBtn.inGame {
   display: inline-flex;
+}
+
+/* Pause button hidden by default except on the Game screen */
+.pauseBtn {
+  display: none;
+}
+body.screen-game .pauseBtn {
+  display: inline-block;
+}
+
+/* Paused overlay */
+.pausedOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: "Press Start 2P", monospace;
+  z-index: 400;
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0.1s linear, opacity 160ms ease;
+}
+.pausedOverlay.active {
+  visibility: visible;
+  opacity: 1;
+}
+.pausedOverlay .pausedInner {
+  background: rgba(0, 0, 0, 0.6);
+  padding: 18px 20px;
+  border-radius: 10px;
+  text-align: center;
+}
+.pausedOverlay h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+.pausedOverlay p {
+  font-size: 12px;
+  margin: 0;
 }
 
 /* Score List Container */
@@ -297,7 +471,7 @@ body.screen-score .musicToggleBtn.inGame {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.2);
   z-index: 100;
   font-size: 32px;
   color: #fff;
@@ -360,15 +534,17 @@ body.screen-score .musicToggleBtn.inGame {
   filter: blur(0.4px);
 }
 
-/* When the user is idle on Start screen, roll a soft scanline down */
-body.screen-start.is-idle .crtOverlay::after {
+/* Run the soft scanline roll on the Start screen (always, not only when idle) */
+body.screen-start .crtOverlay::after {
   opacity: 0.22;
   animation: roll-scanlines 6.5s linear infinite;
 }
 
-/* Hide the canvas frame (and its overlays) when on the main menu */
+/* Keep the canvas frame visible on Start so the CRT overlays and scanlines can render,
+   but allow clicks to pass through to the Start UI (pointer-events disabled). */
 body.screen-start .canvasFrame {
-  display: none;
+  display: block;
+  pointer-events: none; /* let clicks go to the start UI */
 }
 
 /* Keyframes for roll */
@@ -448,6 +624,43 @@ body.screen-start .canvas {
   letter-spacing: 1px;
   text-transform: uppercase;
   margin-bottom: -6px;
+  will-change: transform, text-shadow;
+  /* playful bounce + soft pulsating glow */
+  animation: tagline-bounce 2.2s cubic-bezier(0.22, 0.9, 0.3, 1) infinite, tagline-glow 3.6s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes tagline-bounce {
+  0% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-6px);
+  }
+  55% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes tagline-glow {
+  0% {
+    text-shadow: 0 0 2px rgba(255, 190, 70, 0.12);
+  }
+  50% {
+    text-shadow: 0 0 18px rgba(255, 190, 70, 0.9), 0 0 28px rgba(255, 124, 54, 0.45);
+  }
+  100% {
+    text-shadow: 0 0 2px rgba(255, 190, 70, 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tagline {
+    animation: none !important;
+  }
 }
 
 /* Card container */
@@ -458,9 +671,29 @@ body.screen-start .canvas {
   padding: 16px 18px;
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.03), 0 8px 30px var(--glow);
+  border: 1px solid rgba(255, 190, 70, 0.18);
+  box-shadow: 0 0 6px rgba(255, 180, 70, 0.18), 0 8px 30px var(--glow);
+  /* subtle pulsing glow on the arcade card border */
+  animation: card-glow 3.6s ease-in-out infinite;
   backdrop-filter: blur(4px);
+}
+
+@keyframes card-glow {
+  0% {
+    box-shadow: 0 0 4px rgba(255, 180, 70, 0.08), 0 8px 30px rgba(255, 180, 70, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(255, 180, 70, 0.28), 0 10px 40px rgba(255, 180, 70, 0.45);
+  }
+  100% {
+    box-shadow: 0 0 4px rgba(255, 180, 70, 0.08), 0 8px 30px rgba(255, 180, 70, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arcadeCard {
+    animation: none !important;
+  }
 }
 
 /* Intro + tips */
@@ -584,6 +817,37 @@ body.screen-start .canvas {
   font-size: 13px;
   opacity: 0.8;
   margin-top: 8px;
+}
+
+/* Music credits footer shown on Start and Game screens */
+.gameFooter {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 12px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.12);
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #fff;
+  opacity: 0.95;
+  z-index: 220;
+  display: none; /* visible only on specific screens */
+}
+
+body.screen-start .gameFooter,
+body.screen-game .gameFooter {
+  display: block;
+}
+
+a {
+  color: #ffd580;
+  text-decoration: none;
+}
+
+a:hover,
+a:focus {
+  text-decoration: underline;
 }
 
 /* CRT scanline effect on the entire splash */

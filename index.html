@@ -16,7 +16,6 @@
   <body class="screen-start">
     <!-- Start Area -->
     <div class="startContainer">
-      <p class="tagline">insert coin to begin</p>
       <h1 class="arcadeTitle">🐍 SNAKE!</h1>
 
       <div class="arcadeCard">
@@ -24,15 +23,20 @@
           You're a <strong>ridiculously hungry</strong> snake with one mission:
           <em>eat fruit, grow huge, don't crash.</em>
         </p>
-
+        <br />
+        <span class="label">Controls</span>
         <ul class="tips">
-          <li>Move with <strong>Arrow Keys</strong> or <strong>WASD</strong>.</li>
-          <li>Toggle the grid with <strong>G</strong> (or the button above the canvas).</li>
-          <li>Avoid the <strong>walls</strong> and your own <strong>tail</strong> — or it's game over.</li>
+          <li>Move with <strong>WASD</strong> or <strong>Arrow Keys</strong></li>
+          <li>Pause the game with <strong>P</strong></li>
+          <li>Toggle gridlines with <strong>G</strong> or button in-game</li>
+          <li>Toggle music with <strong>M</strong></li>
         </ul>
 
+        <br />
         <!-- Difficulty Pills -->
         <div class="speedPicker speedPills">
+          <p class="tagline">insert coin to begin</p>
+          <br />
           <span class="label">Difficulty</span>
           <div
             class="pillRow"
@@ -64,6 +68,7 @@
             </button>
           </div>
         </div>
+        <br />
 
         <div class="playerForm">
           <label for="username">Player Name</label>
@@ -83,15 +88,29 @@
         <ul class="highScoresList"></ul>
       </div>
 
-      <p class="footerHint">Pro tip: bigger snake = bigger score. Don't break your neck.</p>
+      <p class="footerHint"><strong>Pro tip</strong>: bigger snake = bigger score.</p>
       <button class="resetScoreboardBtn">Reset Scoreboard</button>
     </div>
 
     <!-- Game -->
     <div class="snakeGame">
       <button class="toggleGridBtn">Toggle Grid</button>
+      <button
+        class="pauseBtn"
+        title="Pause game (P)"
+        aria-pressed="false">
+        Pause
+      </button>
 
       <div class="volumeControl">
+        <label for="sfxVolume">SFX Volume</label>
+        <input
+          id="sfxVolume"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value="1.0" />
         <label for="volume">Volume</label>
         <input
           id="volume"
@@ -99,12 +118,47 @@
           min="0"
           max="1"
           step="0.01"
-          value="0.1" />
-        <button
-          class="musicToggleBtn"
-          aria-pressed="true">
-          Music: On
-        </button>
+          value="1.0" />
+        <span
+          class="volumePercent"
+          aria-live="polite"
+          >100%</span
+        >
+        <br />
+        <div class="musicControls">
+          <button
+            class="musicPrevBtn"
+            title="Previous track">
+            ⏮
+          </button>
+          <button
+            class="musicPlayPauseBtn"
+            title="Play / Pause">
+            ⏯
+          </button>
+          <button
+            class="musicNextBtn"
+            title="Next track">
+            ⏭
+          </button>
+        </div>
+        <div class="musicProgressRow">
+          <input
+            id="musicProgress"
+            type="range"
+            min="0"
+            max="100"
+            step="0.01"
+            value="0" />
+          <div class="timeLabel">— / —</div>
+        </div>
+        <div class="trackScroll">
+          <div
+            class="trackLabel"
+            aria-live="polite">
+            —
+          </div>
+        </div>
       </div>
 
       <!-- Canvas frame with CRT overlay -->
@@ -114,8 +168,17 @@
           class="canvas-ui"
           aria-hidden="true"></canvas>
         <div
+          class="pausedOverlay"
+          role="status"
+          aria-hidden="true">
+          <div class="pausedInner">
+            <h2>Game Paused</h2>
+            <p>Press <strong>P</strong> to resume or click Resume.</p>
+          </div>
+        </div>
+        <!-- <div
           class="crtOverlay"
-          aria-hidden="true"></div>
+          aria-hidden="true"></div> -->
 
         <!-- Game Over Overlay -->
         <div
@@ -132,6 +195,30 @@
 
       <button class="restartBtn">Return to Menu</button>
       <button class="playAgainBtn">Play Again</button>
+    </div>
+
+    <!-- Footer with music credits (shown on Start and Game screens) -->
+    <div
+      class="gameFooter"
+      role="contentinfo">
+      Music by the amazing
+      <strong
+        ><a
+          href="https://paragonx9.newgrounds.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >ParagonX9</a
+        ></strong
+      >
+      &amp;
+      <strong>
+        <a
+          href="https://avizurang.newgrounds.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Avizura</a
+        ></strong
+      >
     </div>
 
     <script src="./javascript/snake.js"></script>
