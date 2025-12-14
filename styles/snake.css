@@ -448,6 +448,36 @@ body.screen-score .musicToggleBtn.inGame {
   display: inline-flex;
 }
 
+.gameControlsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.scoreCounter {
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 88px;
+  text-align: center;
+  visibility: hidden;
+}
+
+@media (max-width: 560px) {
+  .gameControlsRow {
+    gap: 6px;
+  }
+  .scoreCounter {
+    min-width: 64px;
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+}
+
 .pauseBtn {
   display: none;
 }

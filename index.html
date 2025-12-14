@@ -94,12 +94,15 @@
     <!-- Game -->
     <div class="snakeGame">
       <button class="toggleGridBtn">Toggle Grid</button>
-      <button
-        class="pauseBtn"
-        title="Pause game (P)"
-        aria-pressed="false">
-        Pause
-      </button>
+      <div class="gameControlsRow">
+        <button
+          class="pauseBtn"
+          title="Pause game (P)"
+          aria-pressed="false">
+          Pause
+        </button>
+        <div class="scoreCounter" aria-live="polite">Score: 0</div>
+      </div>
 
       <div class="volumeControl">
         <label for="sfxVolume">SFX Volume</label>
