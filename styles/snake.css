@@ -159,7 +159,7 @@ body.screen-game .restartBtn {
 
 .resetScoreboardBtn {
   position: static;
-  margin: 12px auto 0;
+  margin: 2px auto 0;
   display: block;
 }
 
@@ -311,8 +311,49 @@ body.screen-game .restartBtn {
   font-size: 12px;
   opacity: 0.95;
 }
-.volumeControl input[type="range"] {
+.volumeControl input[type="range"],
+.musicProgressRow input[type="range"] {
   width: 140px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: transparent;
+}
+
+/* WebKit (Chrome, Safari) */
+.volumeControl input[type="range"]::-webkit-slider-runnable-track,
+.musicProgressRow input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+.volumeControl input[type="range"]::-webkit-slider-thumb,
+.musicProgressRow input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -4px;
+  background: #ffd580;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Firefox */
+.volumeControl input[type="range"]::-moz-range-track,
+.musicProgressRow input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+.volumeControl input[type="range"]::-moz-range-thumb,
+.musicProgressRow input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #ffd580;
+  border-radius: 50%;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
 .trackLabel {
