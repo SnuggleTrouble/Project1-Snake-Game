@@ -160,6 +160,13 @@
           </div>
         </div>
       </div>
+      <button
+        class="volumeToggleBtn"
+        aria-expanded="false"
+        aria-controls="volumeControl"
+        title="Open audio settings">
+        🔊
+      </button>
 
       <!-- Canvas frame with CRT overlay -->
       <div class="canvasFrame">
@@ -167,6 +174,7 @@
         <canvas
           class="canvas-ui"
           aria-hidden="true"></canvas>
+          
         <div
           class="pausedOverlay"
           role="status"
@@ -176,15 +184,14 @@
             <p>Press <strong>P</strong> to resume or click Resume.</p>
           </div>
         </div>
-        <!-- <div
-          class="crtOverlay"
-          aria-hidden="true"></div> -->
 
         <!-- Game Over Overlay -->
         <div
           class="gameOverOverlay"
           id="gameOverOverlay"
-          style="display: none"></div>
+          style="display: none">
+          </div>
+        </div>
 
         <!-- Start Instructions Overlay -->
         <div
@@ -197,10 +204,12 @@
       <button class="playAgainBtn">Play Again</button>
     </div>
 
-    <!-- Footer with music credits (shown on Start and Game screens) -->
+    <!-- Footer -->
     <div
       class="gameFooter"
       role="contentinfo">
+      Created by <strong><a href="https://github.com/SnuggleTrouble" target="_blank" rel="noopener noreferrer">SnuggleTrouble</a></strong>
+      <br>
       Music by the amazing
       <strong
         ><a

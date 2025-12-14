@@ -12,15 +12,14 @@ const finalScoreHeading = document.querySelector(".finalScore");
 const usernameInput = document.querySelector("#username");
 const gameOverOverlay = document.querySelector("#gameOverOverlay");
 const startInstructionsOverlay = document.querySelector("#startInstructionsOverlay");
-
-// UI
 const difficultyPills = document.querySelectorAll(".difficultyPill");
-const volumeSlider = document.querySelector("#volume"); // range 0..1
+const volumeSlider = document.querySelector("#volume");
 const toggleGridBtn = document.querySelector(".toggleGridBtn");
 const volumeControl = document.querySelector(".volumeControl");
+let openVolumeControl = () => {};
+let closeVolumeControl = () => {};
 const musicToggleBtnNodeList = document.querySelectorAll(".musicToggleBtn");
 const musicToggleBtns = Array.from(musicToggleBtnNodeList || []);
-// UI elements created in index.html
 const volumePercent = document.querySelector(".volumePercent");
 const pauseBtn = document.querySelector(".pauseBtn");
 const pausedOverlayEl = document.querySelector(".pausedOverlay");
@@ -48,7 +47,6 @@ canvas.height = CANVAS_SIZE;
 const TILE_COUNT = 24;
 const CELL = Math.floor(CANVAS_SIZE / TILE_COUNT);
 
-// Helpers
 const show = (el) => el && (el.style.visibility = "visible");
 const hide = (el) => el && (el.style.visibility = "hidden");
 const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
@@ -59,16 +57,14 @@ function updateStartButtonState() {
 }
 usernameInput?.addEventListener("input", updateStartButtonState);
 usernameInput?.addEventListener("blur", updateStartButtonState);
-// Allow Enter key to start game from username input
 usernameInput?.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !startBtn.disabled) {
     startBtn.click();
   }
 });
 
-// ---- Idle detection for start screen CRT roll ----
 let idleTimer = null;
-const IDLE_MS = 2000; // how long before the roll shows
+const IDLE_MS = 2000;
 
 function setBodyState(isStart) {
   document.body.classList.toggle("screen-start", !!isStart);
@@ -81,16 +77,13 @@ function startIdleWatch() {
     document.body.classList.remove("is-idle");
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {
-      // only show idle on start screen
       if (document.body.classList.contains("screen-start")) {
         document.body.classList.add("is-idle");
       }
     }, IDLE_MS);
   };
-  // events that count as activity
   const evs = ["mousemove", "mousedown", "keydown", "touchstart", "pointermove"];
   evs.forEach((e) => window.addEventListener(e, reset, { passive: true }));
-  // store listeners so we can remove later
   window.__snakeIdleReset = reset;
   window.__snakeIdleEvents = evs;
   reset();
@@ -107,7 +100,6 @@ function stopIdleWatch() {
 
 // Debug Helper
 function getEffectiveDirection() {
-  // The next direction that will be applied on the next tick
   return dirQueue.length ? dirQueue[0] : dir;
 }
 function predictNextHead() {
@@ -115,7 +107,6 @@ function predictNextHead() {
   return { x: snake[0].x + nd.x, y: snake[0].y + nd.y, nd };
 }
 function findSelfCollisionIndex(next, willGrow) {
-  // Ignore the tail when not growing (it will vacate)
   const lenToCheck = willGrow ? snake.length : Math.max(0, snake.length - 1);
   for (let i = 0; i < lenToCheck; i++) {
     if (snake[i].x === next.x && snake[i].y === next.y) return i;
@@ -132,7 +123,6 @@ appleImage.onload = () => (appleReady = true);
 const atlas = new Image();
 atlas.src = "./images/snake-graphics.png";
 
-// Each sprite frame inside the atlas
 const ATLAS = { fw: 64, fh: 64 };
 let atlasReady = false;
 atlas.onload = () => {
@@ -142,7 +132,6 @@ atlas.onload = () => {
   console.log(`Atlas ready: ${ATLAS.cols} x ${ATLAS.rows} tiles`);
 };
 
-// Mapping of [tx, ty] = [column, row] in the atlas.
 const SPRITE = {
   head: { up: [3, 0], right: [4, 0], down: [4, 1], left: [3, 1] },
   tail: { up: [3, 2], right: [4, 2], down: [4, 3], left: [3, 3] },
@@ -156,34 +145,29 @@ const SPRITE = {
   apple: [0, 3],
 };
 
-// Sounds (SFX)
 const Sounds = {
   eat: new Audio("./sounds/chomp.mp3"),
   gameOver: new Audio("./sounds/gameOver.mp3"),
   gameWon: new Audio("./sounds/gameWon.mp3"),
 };
 
-// Crossfade duration (ms)
 const CROSSFADE_MS = 1600;
-let masterMusicVolume = 0.1; // master music volume (0..1) — default to 10%
-// Web Audio API handles — we'll attempt to migrate to use GainNode ramps
+let masterMusicVolume = 0.1;
 let audioContext = null;
 let masterGainNode = null;
 let usingWebAudio = false;
-const MIN_GAIN = 0.001; // small epsilon for exponential ramps (must be > 0)
+const MIN_GAIN = 0.001;
 
 function mkTrack(src, label) {
   const a = new Audio(src);
   a.preload = "auto";
   a.dataset.trackLabel = label || src;
-  // track web-audio metadata
   a.__webAudioInit = false;
   a.__webGain = null;
   a.__webSource = null;
   return a;
 }
 
-// Background playlist: chain tracks during gameplay (exclude START_TRACK)
 const BG_PLAYLIST = [
   mkTrack("./sounds/ParagonX9_Metropolis_8.mp3", "ParagonX9 - Metropolis 8Bit"),
   mkTrack("./sounds/ParagonX9_No_5.mp3", "ParagonX9 - No. 5"),
@@ -193,11 +177,9 @@ const BG_PLAYLIST = [
   mkTrack("./sounds/ParagonX9_Soulblade_NG_C.mp3", "ParagonX9 - Soulblade NG C"),
   mkTrack("./sounds/ParagonX9_Chaoz_Fantasy_8_Bit.mp3", "ParagonX9 - Chaoz Fantasy 8Bit"),
 ];
-// Dedicated start-screen track (plays only on the Start screen, then chains into playlist)
 const START_TRACK = mkTrack("./sounds/ParagonX9_Chaoz_Fantasy_8_Bit.mp3", "ParagonX9 - Chaoz Fantasy 8Bit");
 let bgIndex = 0;
 let bgPlayer = null;
-// Music enabled state (user toggle)
 let musicEnabled = true;
 
 function updateMusicToggleUI() {
@@ -207,7 +189,6 @@ function updateMusicToggleUI() {
       btn.setAttribute("aria-pressed", musicEnabled ? "true" : "false");
     } catch (e) {}
   });
-  // Update track label when toggling
   if (!musicEnabled) {
     setTrackLabel("Muted");
   } else {
@@ -231,15 +212,12 @@ function toggleMusicEnabled(shouldEnable) {
   } catch (e) {}
   updateMusicToggleUI();
   try {
-    // If enabling, play the appropriate track for the current screen
     if (musicEnabled) {
-      // Ensure AudioContext exists if user turned music on
       try {
         ensureAudioContext();
       } catch (e) {
         console.error("ensureAudioContext failed in toggleMusicEnabled", e);
       }
-      // Attempt to resume the audio context — this should be allowed since it's triggered from a user gesture
       try {
         if (audioContext && audioContext.state === "suspended") {
           audioContext
@@ -250,15 +228,12 @@ function toggleMusicEnabled(shouldEnable) {
       } catch (e) {
         console.error("audioContext resume attempt failed (toggleMusic)", e);
       }
-      // Do not auto-start music when toggled on; just unmute/resume existing playback state
-      // If nothing is playing, start the appropriate source
       if (document.body.classList.contains("screen-start")) {
         if (START_TRACK && START_TRACK.paused) playStartMusic({ restart: false });
       } else {
         if ((bgPlayer && bgPlayer.paused) || !bgPlayer) playBg({ restart: false });
       }
     } else {
-      // disable all music
       pauseBg();
       pauseStartMusic();
       try {
@@ -273,13 +248,10 @@ musicToggleBtns.forEach((b) => b.addEventListener("click", () => toggleMusicEnab
 function initBgPlaylist() {
   BG_PLAYLIST.forEach((a) => {
     a.loop = false;
-    // clear existing listeners to avoid duplicates
     a.onended = null;
     a.onended = function () {
-      // default ended handler is to start the next track (but we will normally crossfade earlier)
       bgIndex = (bgIndex + 1) % BG_PLAYLIST.length;
       const next = BG_PLAYLIST[bgIndex];
-      // ensure outgoing track is paused before starting next
       try {
         if (a && !a.paused) {
           a.pause();
@@ -301,13 +273,11 @@ function ensureAudioContext() {
     if (!AudioCtx) return null;
     audioContext = new AudioCtx();
     masterGainNode = audioContext.createGain();
-    // set master gain to current masterMusicVolume
     masterGainNode.gain.value = Math.max(MIN_GAIN, masterMusicVolume);
     masterGainNode.connect(audioContext.destination);
     usingWebAudio = true;
   } catch (e) {
     usingWebAudio = false;
-    // initial player UI state
     try {
       updatePlayPauseUI();
       if (timeLabelEl) timeLabelEl.textContent = "— / —";
@@ -316,7 +286,6 @@ function ensureAudioContext() {
   return audioContext;
 }
 
-// Centralized helper to apply masterMusicVolume to current audio plumbing
 function applyMasterVolume() {
   if (usingWebAudio && masterGainNode && audioContext) {
     try {
@@ -337,7 +306,6 @@ function applyMasterVolume() {
   } catch (e) {}
 }
 
-// Small helpers for audio state
 function isWebAudioAvailable() {
   return Boolean(usingWebAudio && audioContext && audioContext.state && audioContext.state !== "closed");
 }
@@ -345,22 +313,18 @@ function getCurrentMusicVolume() {
   return masterMusicVolume;
 }
 
-// removed getEffectiveMusicVolume(): use masterMusicVolume directly
-
 function initWebAudioForTrack(a) {
   if (!a || a.__webAudioInit || !ensureAudioContext()) return;
   try {
-    // Create MediaElementSource and per-track gain
     const source = audioContext.createMediaElementSource(a);
     const gain = audioContext.createGain();
-    gain.gain.value = 1.0; // per-track multiplier handled by masterGain
+    gain.gain.value = 1.0;
     source.connect(gain);
     gain.connect(masterGainNode);
     a.__webAudioInit = true;
     a.__webSource = source;
     a.__webGain = gain;
   } catch (e) {
-    // some browsers disallow createMediaElementSource in certain contexts
     a.__webAudioInit = false;
   }
 }
@@ -373,26 +337,66 @@ function getGainNodeFor(a) {
 
 // Track label DOM
 const trackLabelEl = document.querySelector(".trackLabel");
-// musicIndicator removed — we previously used it as a visual crossfade indicator
-// Player UI elements
 const sfxVolumeSlider = document.querySelector("#sfxVolume");
 const musicPrevBtn = document.querySelector(".musicPrevBtn");
 const musicPlayPauseBtn = document.querySelector(".musicPlayPauseBtn");
 const musicNextBtn = document.querySelector(".musicNextBtn");
 const musicProgress = document.querySelector("#musicProgress");
 const timeLabelEl = document.querySelector(".timeLabel");
+const volumeToggleBtn = document.querySelector(".volumeToggleBtn");
 
 // SFX WebAudio node
 let sfxGainNode = null;
 let sfxVolume = 1.0;
-const DUCKING_FACTOR = 0.25; // reduce SFX to 25% during crossfade
-const DUCK_MS = 300; // ducking ramp duration
+const DUCKING_FACTOR = 0.25;
+const DUCK_MS = 300;
 let progressLoopId = null;
 let isMusicPlaying = false;
 let audioUnlocked = false;
 let enableSoundBtn = null;
 
-// Unlock/resume audio on first user gesture if autoplay was blocked
+try {
+  if (volumeToggleBtn && volumeControl) {
+    const __volumeControlDocClickHandler = (e) => {
+      if (!volumeControl || !volumeControl.classList.contains("open")) return;
+      const t = e.target;
+      if (volumeControl.contains(t) || (volumeToggleBtn && volumeToggleBtn.contains(t))) return;
+      closeVolumeControl();
+    };
+
+    const __volumeControlKeydownHandler = (e) => {
+      if (e.key === "Escape" && volumeControl && volumeControl.classList.contains("open")) {
+        closeVolumeControl();
+      }
+    };
+
+    openVolumeControl = () => {
+      if (!volumeControl) return;
+      volumeControl.classList.add("open");
+      if (volumeToggleBtn) volumeToggleBtn.setAttribute("aria-expanded", "true");
+      volumeControl.style.display = "flex";
+      document.addEventListener("click", __volumeControlDocClickHandler);
+      document.addEventListener("keydown", __volumeControlKeydownHandler);
+    };
+
+    closeVolumeControl = () => {
+      if (!volumeControl) return;
+      volumeControl.classList.remove("open");
+      volumeControl.style.display = "";
+      if (volumeToggleBtn) volumeToggleBtn.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", __volumeControlDocClickHandler);
+      document.removeEventListener("keydown", __volumeControlKeydownHandler);
+    };
+
+    volumeToggleBtn.addEventListener("click", () => {
+      try {
+        if (volumeControl.classList.contains("open")) closeVolumeControl();
+        else openVolumeControl();
+      } catch (e) {}
+    });
+  }
+} catch (e) {}
+
 function attemptUnlockAudioOnce() {
   if (audioUnlocked) return;
   function unlock() {
@@ -413,7 +417,6 @@ function attemptUnlockAudioOnce() {
     } catch (e) {
       console.error("audioContext resume exception during unlock:", e);
     }
-    // If musicEnabled was true and nothing is playing, try to start the appropriate source
     try {
       if (musicEnabled) {
         if (document.body.classList.contains("screen-start")) {
@@ -425,7 +428,6 @@ function attemptUnlockAudioOnce() {
     } catch (e) {
       console.error("unlock/start music failed", e);
     }
-    // remove listeners
     document.removeEventListener("click", unlock);
     document.removeEventListener("keydown", unlock);
   }
@@ -467,7 +469,6 @@ function setTrackLabel(label) {
   trackLabelEl.textContent = label || "—";
 }
 
-// boot-time init for start track + playlist
 function initMusic() {
   try {
     initBgPlaylist();
@@ -487,7 +488,6 @@ function initSfxNodes() {
     sfxGainNode = audioContext.createGain();
     sfxGainNode.gain.value = Math.max(MIN_GAIN, sfxVolume);
     sfxGainNode.connect(audioContext.destination);
-    // initialize existing SFX audio elements
     Object.keys(Sounds).forEach((k) => {
       const a = Sounds[k];
       if (!a) return;
@@ -496,13 +496,10 @@ function initSfxNodes() {
         src.connect(sfxGainNode);
         a.__sfxWebAudio = true;
       } catch (e) {
-        // fallback: nothing to do
         a.__sfxWebAudio = false;
       }
     });
-  } catch (e) {
-    // fallback: ignore
-  }
+  } catch (e) {}
 }
 
 function formatTime(sec) {
@@ -532,7 +529,6 @@ function updateProgressUI() {
       musicProgress.value = cur;
       timeLabelEl.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
     } else {
-      // unknown duration
       musicProgress.max = 100;
       musicProgress.value = Math.min(100, cur % 100);
       timeLabelEl.textContent = `${formatTime(cur)} / —`;
@@ -565,7 +561,7 @@ function updatePlayPauseUI() {
 
 function previousTrack() {
   if (!BG_PLAYLIST.length) return;
-  if (screen !== Screens.GAME && screen !== Screens.SCORE) return; // only control playlist in-game/score
+  if (screen !== Screens.GAME && screen !== Screens.SCORE) return;
   playTrackAtIndex(bgIndex - 1, { restart: true });
 }
 function nextTrack() {
@@ -575,7 +571,6 @@ function nextTrack() {
 }
 function togglePlayPause() {
   console.debug("togglePlayPause() called", { musicEnabled, isMusicPlaying, screen });
-  // If music is currently disabled via the global toggle, enable it on explicit Play request
   if (!musicEnabled) {
     console.debug("togglePlayPause: music was disabled — auto-enabling");
     try {
@@ -584,7 +579,6 @@ function togglePlayPause() {
       console.error("Failed to auto-enable music in togglePlayPause", e);
     }
   }
-  // Ensure AudioContext exists and is resumed — this is a user gesture so resume should be allowed
   try {
     ensureAudioContext();
     if (audioContext && audioContext.state === "suspended") {
@@ -608,7 +602,6 @@ function togglePlayPause() {
 function toggleGamePause() {
   if (screen !== Screens.GAME) return;
   if (isPaused) {
-    // resume
     isPaused = false;
     try {
       if (pauseBtn) {
@@ -618,13 +611,11 @@ function toggleGamePause() {
     } catch (e) {}
     lastTime = performance.now();
     startLoop();
-    // Do not change music playback when toggling game pause anymore
     try {
       if (pausedOverlayEl) pausedOverlayEl.classList.remove("active");
       if (pausedOverlayEl) pausedOverlayEl.setAttribute("aria-hidden", "true");
     } catch (e) {}
   } else {
-    // pause
     isPaused = true;
     try {
       if (pauseBtn) {
@@ -636,7 +627,6 @@ function toggleGamePause() {
       if (rafId) cancelAnimationFrame(rafId);
       rafId = null;
     } catch (e) {}
-    // Do not pause music when pausing the game
     try {
       if (pausedOverlayEl) pausedOverlayEl.classList.add("active");
       if (pausedOverlayEl) pausedOverlayEl.setAttribute("aria-hidden", "false");
@@ -672,7 +662,6 @@ function duckSfx(ducked = true) {
       sfxGainNode.gain.exponentialRampToValueAtTime(target, now + DUCK_MS / 1000);
     } catch (e) {}
   } else {
-    // fallback: adjust HTMLAudio volumes directly
     Object.keys(Sounds).forEach((k) => {
       try {
         if (Sounds[k]) Sounds[k].volume = ducked ? sfxVolume * DUCKING_FACTOR : sfxVolume;
@@ -684,7 +673,6 @@ function playStartMusic(opts = { restart: true }) {
   try {
     console.debug("playStartMusic() called", { opts, musicEnabled, START_TRACKReadyState: START_TRACK && START_TRACK.readyState });
     if (!START_TRACK) return;
-    // initialize web audio for the start track if available
     initWebAudioForTrack(START_TRACK);
     try {
       if (usingWebAudio && audioContext && audioContext.state === "suspended") {
@@ -693,7 +681,6 @@ function playStartMusic(opts = { restart: true }) {
     } catch (e) {}
     if (opts.restart) START_TRACK.currentTime = 0;
     if (usingWebAudio && START_TRACK.__webGain) {
-      // ramp immediate to master volume
       START_TRACK.__webGain.gain.setValueAtTime(Math.max(MIN_GAIN, masterMusicVolume), audioContext.currentTime);
     } else {
       START_TRACK.volume = masterMusicVolume;
@@ -714,7 +701,6 @@ function playStartMusic(opts = { restart: true }) {
           readyState: START_TRACK.readyState,
         });
         try {
-          // If autoplay was blocked, attempt to unlock on first gesture
           attemptUnlockAudioOnce();
         } catch (e) {}
       });
@@ -737,8 +723,6 @@ function playStartMusic(opts = { restart: true }) {
     updatePlayPauseUI();
     startProgressLoop();
     setTrackLabel(START_TRACK.dataset.trackLabel);
-    // On the Start screen, the START_TRACK should loop and not chain into the in-game playlist.
-    // We intentionally do not schedule a crossfade into the BG playlist here.
     try {
       START_TRACK.loop = true;
       START_TRACK.onended = null;
@@ -777,13 +761,13 @@ function stopStartMusic() {
 function initStartTrack() {
   try {
     START_TRACK.preload = "auto";
-    START_TRACK.loop = true; // loop on the Start screen; do not chain into playlist
+    START_TRACK.loop = true;
   } catch (e) {}
 }
 
 // Fade / Crossfade helpers
-let crossfadeTimer = null; // scheduled crossfade timeout
-let fadeIntervalId = null; // interval id for active fade
+let crossfadeTimer = null;
+let fadeIntervalId = null;
 function clearScheduledCrossfade() {
   if (crossfadeTimer) {
     clearTimeout(crossfadeTimer);
@@ -793,7 +777,6 @@ function clearScheduledCrossfade() {
     clearInterval(fadeIntervalId);
     fadeIntervalId = null;
   }
-  // Cancel any scheduled ramps on web audio gain nodes
   if (usingWebAudio && audioContext) {
     try {
       const now = audioContext.currentTime;
@@ -818,7 +801,6 @@ function crossfade(out, ina, dur = CROSSFADE_MS) {
     duckSfx(true);
   } catch (e) {}
   if (!out || !ina || dur <= 0) return;
-  // If using WebAudio, use exponentialRampToValueAtTime on GainNodes
   if (usingWebAudio && audioContext) {
     try {
       initWebAudioForTrack(out);
@@ -826,10 +808,8 @@ function crossfade(out, ina, dur = CROSSFADE_MS) {
       const outGain = out.__webGain;
       const inGain = ina.__webGain;
       if (!outGain || !inGain) throw new Error("web gain missing");
-      // schedule ramps in seconds
       const now = audioContext.currentTime;
       const durSec = dur / 1000;
-      // start ina from a small epsilon
       inGain.gain.cancelScheduledValues(now);
       outGain.gain.cancelScheduledValues(now);
       inGain.gain.setValueAtTime(Math.max(MIN_GAIN, 0.0001), now);
@@ -857,20 +837,16 @@ function crossfade(out, ina, dur = CROSSFADE_MS) {
       } catch (e) {
         console.error("ina.play() call threw:", e);
       }
-      // musicIndicator removed - no-op
-      // schedule exponential ramp to master volume and to near-zero
+
       inGain.gain.exponentialRampToValueAtTime(Math.max(MIN_GAIN, masterMusicVolume), now + durSec);
       outGain.gain.exponentialRampToValueAtTime(MIN_GAIN, now + durSec);
 
-      // schedule cleanup after the fade
       crossfadeTimer = setTimeout(() => {
         try {
           out.pause();
           out.currentTime = 0;
-          // ensure ina is set to master volume
           inGain.gain.cancelScheduledValues(audioContext.currentTime);
           inGain.gain.setValueAtTime(Math.max(MIN_GAIN, masterMusicVolume), audioContext.currentTime);
-          // schedule next crossfade if ina is part of playlist
           const idx = BG_PLAYLIST.indexOf(ina);
           if (idx >= 0) {
             bgIndex = idx;
@@ -879,7 +855,6 @@ function crossfade(out, ina, dur = CROSSFADE_MS) {
             scheduleCrossfade(ina, next);
           }
           setTrackLabel(ina.dataset.trackLabel);
-          // musicIndicator removed - no-op
           try {
             duckSfx(false);
           } catch (e) {}
@@ -887,11 +862,8 @@ function crossfade(out, ina, dur = CROSSFADE_MS) {
         crossfadeTimer = null;
       }, dur);
       return;
-    } catch (e) {
-      // fallback to HTMLAudio linear fade if WebAudio fails
-    }
+    } catch (e) {}
   }
-  // ensure target volumes are zeroed before starting
   try {
     ina.volume = 0;
     ina.currentTime = 0;
@@ -916,7 +888,6 @@ function crossfade(out, ina, dur = CROSSFADE_MS) {
       try {
         ina.volume = masterMusicVolume;
       } catch (e) {}
-      // schedule next crossfade for ina->next (if ina is part of BG_PLAYLIST)
       const idx = BG_PLAYLIST.indexOf(ina);
       if (idx >= 0) {
         bgIndex = idx;
@@ -924,7 +895,6 @@ function crossfade(out, ina, dur = CROSSFADE_MS) {
         const next = BG_PLAYLIST[(idx + 1) % BG_PLAYLIST.length];
         scheduleCrossfade(ina, next);
       }
-      // update label for the new track
       setTrackLabel(ina.dataset.trackLabel);
       try {
         duckSfx(false);
@@ -935,20 +905,16 @@ function crossfade(out, ina, dur = CROSSFADE_MS) {
 
 function scheduleCrossfade(current, next) {
   clearScheduledCrossfade();
-  // if next is missing, nothing to fade to
   if (!current || !next) return;
-  // If duration is not available, fall back to ended handler
   try {
     const dur = current.duration;
-    if (!dur || isNaN(dur) || dur <= CROSSFADE_MS) return; // no space for crossfade
+    if (!dur || isNaN(dur) || dur <= CROSSFADE_MS) return;
     const remaining = (dur - current.currentTime) * 1000;
     const startDelay = Math.max(0, remaining - CROSSFADE_MS);
     crossfadeTimer = setTimeout(() => {
       crossfade(current, next, Math.min(CROSSFADE_MS, dur * 1000));
     }, startDelay);
-  } catch (e) {
-    // ignore scheduling if duration not available
-  }
+  } catch (e) {}
 }
 
 function playTrackAtIndex(i, opts = { restart: true }) {
@@ -959,7 +925,6 @@ function playTrackAtIndex(i, opts = { restart: true }) {
   if (!cur) return;
   try {
     clearScheduledCrossfade();
-    // pause and cleanup prior background player if different
     try {
       if (bgPlayer && bgPlayer !== cur) {
         bgPlayer.pause();
@@ -1006,7 +971,6 @@ function playTrackAtIndex(i, opts = { restart: true }) {
     } catch (e) {
       console.error("cur.play() call threw:", e, { idx });
     }
-    // attach update hooks
     try {
       cur.onplay = () => {
         isMusicPlaying = true;
@@ -1023,13 +987,11 @@ function playTrackAtIndex(i, opts = { restart: true }) {
     isMusicPlaying = true;
     updatePlayPauseUI();
     startProgressLoop();
-    // schedule crossfade to next
     const next = BG_PLAYLIST[(idx + 1) % BG_PLAYLIST.length];
     scheduleCrossfade(cur, next);
   } catch (e) {}
 }
 
-// Play/pause helpers for background music
 function playBg(opts = { restart: true }) {
   if (!BG_PLAYLIST.length) return;
   if (!bgPlayer) initBgPlaylist();
@@ -1067,26 +1029,20 @@ function stopBg() {
     } catch (e) {}
 }
 
-// Fixed SFX volume (tweak to taste)
 const SFX_VOLUME = 1.0;
 ["eat", "gameOver", "gameWon"].forEach((k) => {
   if (Sounds[k]) Sounds[k].volume = SFX_VOLUME;
 });
 
-// Music-only volume
 function setMusicVolume(v) {
   const vol = Math.min(1, Math.max(0, Number(v)));
   masterMusicVolume = vol;
   try {
     localStorage.setItem("snake:musicVolume", String(masterMusicVolume));
   } catch (e) {}
-  // Centralized application
   applyMasterVolume();
 }
 
-// NOTE: music ceiling (musicVolumeCeil) removed — use masterMusicVolume directly.
-
-// Init + live updates (Start/Score screens)
 try {
   const storedVol = localStorage.getItem("snake:musicVolume");
   if (storedVol !== null) masterMusicVolume = Number(storedVol);
@@ -1102,12 +1058,10 @@ if (sfxVolumeSlider) sfxVolumeSlider.value = String(sfxVolume);
 setSfxVolume(sfxVolume);
 sfxVolumeSlider?.addEventListener("input", (e) => setSfxVolume(e.target.value));
 
-// Load persisted music preference (defaults to true)
 try {
   const raw = localStorage.getItem("snake:musicEnabled");
   if (raw !== null) musicEnabled = raw === "true";
 } catch (e) {}
-// Apply initial UI state for toggle controls
 updateMusicToggleUI();
 
 // ---- State machine ----
@@ -1136,12 +1090,12 @@ let acc = 0;
 // Input: small queue for crisp turns
 let dir = { x: 1, y: 0 };
 let dirQueue = []; // up to 2 pending directions
-let hasStarted = false; // wait for first input
+let hasStarted = false;
 let isGameOver = false;
-let isPaused = false; // gameplay paused state
+let isPaused = false;
 let gameOverReason = "";
 
-// ---- High scores (module with medals) ----
+// ---- High scores ----
 const Scoreboard = (() => {
   const KEY = (bucket) => `highScores:${bucket || "all"}`;
   const MAX = 10;
@@ -1194,6 +1148,14 @@ const Scoreboard = (() => {
 // ---- Screens ----
 function enterStartScreen() {
   screen = Screens.START;
+  try {
+    isGameOver = false;
+    if (gameOverOverlay) {
+      try {
+        gameOverOverlay.style.display = "none";
+      } catch (e) {}
+    }
+  } catch (e) {}
   show(startContainer);
   hide(canvas);
   hide(playAgainBtn);
@@ -1201,7 +1163,6 @@ function enterStartScreen() {
   show(scoreListContainer);
   hide(toggleGridBtn);
   show(volumeControl);
-  // ensure game-only controls are hidden on start screen
   try {
     hide(pauseBtn);
     hide(toggleGridBtn);
@@ -1215,14 +1176,11 @@ function enterStartScreen() {
   startIdleWatch();
 
   try {
-    // stop in-game playlist and start the dedicated start-screen music
     stopBg();
     if (musicEnabled) {
       console.debug("enterStartScreen: starting START_TRACK (musicEnabled)");
       playStartMusic({ restart: true });
-      // In case autoplay was blocked by the browser, attempt to unlock audio on first user gesture
       attemptUnlockAudioOnce();
-      // show an explicit enable-sound button if audio still suspended after a short delay
       setTimeout(() => {
         try {
           if (!isMusicPlaying && (!audioContext || (audioContext && audioContext.state === "suspended"))) {
@@ -1233,6 +1191,11 @@ function enterStartScreen() {
     } else {
       console.debug("enterStartScreen: musicDisabled, not starting START_TRACK");
     }
+  } catch (e) {}
+  try {
+    try {
+      closeVolumeControl();
+    } catch (e) {}
   } catch (e) {}
   try {
     if (pauseBtn) {
@@ -1283,12 +1246,10 @@ function enterGameScreen(opts = { restartMusic: true }) {
   spawnFood();
 
   try {
-    // Stop any start-screen music, then start in-game playlist if enabled
     stopStartMusic();
     if (musicEnabled && opts.restartMusic) {
       console.debug("enterGameScreen: starting BG playlist (musicEnabled)");
       playBg({ restart: true });
-      // In case autoplay was blocked, attach unlock handler to start on first user gesture
       attemptUnlockAudioOnce();
       setTimeout(() => {
         try {
@@ -1304,7 +1265,6 @@ function enterGameScreen(opts = { restartMusic: true }) {
 
   lastTime = performance.now();
   acc = 0;
-  // clear paused state
   isPaused = false;
   try {
     if (pauseBtn) {
@@ -1319,6 +1279,11 @@ function enterGameScreen(opts = { restartMusic: true }) {
     if (pauseBtn) pauseBtn.setAttribute("aria-hidden", "false");
   } catch (e) {}
   startLoop();
+  try {
+    try {
+      closeVolumeControl();
+    } catch (e) {}
+  } catch (e) {}
 }
 
 function enterScoreScreen() {
@@ -1334,6 +1299,11 @@ function enterScoreScreen() {
   } catch (e) {}
   document.body.classList.remove("screen-start");
   document.body.classList.remove("screen-game");
+  try {
+    try {
+      closeVolumeControl();
+    } catch (e) {}
+  } catch (e) {}
 }
 
 // ---- Loop ----
@@ -1375,7 +1345,6 @@ function loop(t) {
 function update() {
   if (isGameOver || !hasStarted) return;
 
-  // apply at most one queued direction before moving
   if (dirQueue.length) dir = dirQueue.shift();
 
   const next = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
@@ -1385,7 +1354,6 @@ function update() {
     return gameOver("You hit the wall");
   }
 
-  // will we eat on this step?
   const willGrow = next.x === food.x && next.y === food.y;
 
   // self-collision:
@@ -1398,7 +1366,6 @@ function update() {
     }
   }
 
-  // move
   snake.unshift(next);
 
   if (willGrow) {
@@ -1678,7 +1645,6 @@ function render() {
     gameOverOverlay.style.display = "none";
   }
 
-  // Debug HUD & predicted next step
   if (DEBUG.enabled && screen === Screens.GAME) {
     drawDebugOverlayHUD();
   }
@@ -1689,7 +1655,7 @@ function drawOverlay(text) {
   ctx.fillStyle = "rgba(0,0,0,0.1)";
   ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
   ctx.fillStyle = "#fff";
-  ctx.font = setHudFont(28); // game over / messages
+  ctx.font = setHudFont(28);
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(text, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
