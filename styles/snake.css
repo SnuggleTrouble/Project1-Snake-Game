@@ -924,6 +924,7 @@ body.screen-start .canvas {
   opacity: 0.95;
   z-index: 220;
   display: none;
+  line-height: 1.4;
 }
 
 body.screen-start .gameFooter,
