@@ -23,6 +23,7 @@ const musicToggleBtns = Array.from(musicToggleBtnNodeList || []);
 const volumePercent = document.querySelector(".volumePercent");
 const pauseBtn = document.querySelector(".pauseBtn");
 const pausedOverlayEl = document.querySelector(".pausedOverlay");
+const scoreCounterEl = document.querySelector(".scoreCounter");
 
 const HUD_FONT_FAMILY = '"Press Start 2P", monospace';
 function setHudFont(px, mono = false) {
@@ -1205,6 +1206,9 @@ function enterStartScreen() {
       } catch (e) {}
     }
   } catch (e) {}
+  try {
+    hide(scoreCounterEl);
+  } catch (e) {}
 
   const lbl = getSelectedSpeedLabel();
   if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
@@ -1232,6 +1236,9 @@ function enterGameScreen(opts = { restartMusic: true }) {
   updateSpeedFromUI();
 
   score = 0;
+  try {
+    if (scoreCounterEl) scoreCounterEl.textContent = `Score: ${score}`;
+  } catch (e) {}
   isGameOver = false;
   gameOverReason = "";
   hasStarted = false;
@@ -1276,6 +1283,9 @@ function enterGameScreen(opts = { restartMusic: true }) {
     }
   } catch (e) {}
   try {
+    show(scoreCounterEl);
+  } catch (e) {}
+  try {
     if (pauseBtn) pauseBtn.setAttribute("aria-hidden", "false");
   } catch (e) {}
   startLoop();
@@ -1296,6 +1306,9 @@ function enterScoreScreen() {
   document.body.classList.add("screen-score");
   try {
     if (pauseBtn) pauseBtn.setAttribute("aria-hidden", "true");
+  } catch (e) {}
+  try {
+    show(scoreCounterEl);
   } catch (e) {}
   document.body.classList.remove("screen-start");
   document.body.classList.remove("screen-game");
@@ -1370,6 +1383,10 @@ function update() {
 
   if (willGrow) {
     score += 1;
+    // update DOM score counter
+    try {
+      if (scoreCounterEl) scoreCounterEl.textContent = `Score: ${score}`;
+    } catch (e) {}
     try {
       Sounds.eat.currentTime = 0;
       Sounds.eat.play().catch(() => {});
@@ -1615,7 +1632,6 @@ function render() {
   // HUD
   ctx.fillStyle = "#eee";
   ctx.font = setHudFont(18);
-  ctx.fillText(`Score: ${score}`, 12, 26);
 
   if (DEBUG.enabled) {
     ctx.save();
