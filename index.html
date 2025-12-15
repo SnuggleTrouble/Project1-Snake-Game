@@ -66,7 +66,16 @@
               data-label="hard">
               Hard
             </button>
+            <button
+              class="difficultyPill"
+              role="radio"
+              aria-checked="false"
+              data-ms="dynamic"
+              data-label="dynamic">
+              Dynamic
+            </button>
           </div>
+            <!-- Dynamic difficulty progress bar (moved to in-game controls) -->
         </div>
         <br />
 
@@ -103,6 +112,8 @@
         </button>
         <div class="scoreCounter" aria-live="polite">Score: 0</div>
       </div>
+
+
 
       <div class="volumeControl">
         <label for="sfxVolume">SFX Volume</label>
@@ -176,6 +187,8 @@
         <canvas
           class="canvas-ui"
           aria-hidden="true"></canvas>
+
+
           
         <div
           class="pausedOverlay"
@@ -192,6 +205,17 @@
           class="gameOverOverlay"
           id="gameOverOverlay"
           style="display: none">
+          </div>
+        </div>
+
+        <!-- Main difficulty label (centered below canvas) -->
+        <div class="mainDifficultyLabel" aria-live="polite" aria-hidden="true">—</div>
+
+        <!-- Dynamic difficulty progress bar (visible in-game only; positioned below canvas) -->
+        <div class="dynamicBar" aria-hidden="true">
+          <div class="dynamicBar__track" aria-hidden="true">
+            <div class="dynamicBar__fill"></div>
+            <div class="dynamicBar__ticks"></div>
           </div>
         </div>
 

@@ -1084,6 +1084,10 @@ let score = 0;
 const SPEED_MULT = 4; // Easy=200ms, Normal=100ms, Hard=60ms
 let currentSpeedLabel = "normal";
 let stepMs = 100;
+// Dynamic difficulty configuration (actual step ms values)
+const DYNAMIC_START_STEP_MS = 200;
+const DYNAMIC_MIN_STEP_MS = 60;
+let dynamicStepMs = DYNAMIC_START_STEP_MS;
 let rafId = null;
 let lastTime = 0;
 let acc = 0;
@@ -1209,6 +1213,11 @@ function enterStartScreen() {
   try {
     hide(scoreCounterEl);
   } catch (e) {}
+  try {
+    // ensure dynamic difficulty bar is hidden for screen readers on start
+    if (dynamicBarEl) dynamicBarEl.setAttribute("aria-hidden", "true");
+    if (mainDifficultyLabelEl) mainDifficultyLabelEl.setAttribute("aria-hidden", "true");
+  } catch (e) {}
 
   const lbl = getSelectedSpeedLabel();
   if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
@@ -1236,8 +1245,17 @@ function enterGameScreen(opts = { restartMusic: true }) {
   updateSpeedFromUI();
 
   score = 0;
+  // reset dynamic difficulty to starting value on new game
+  try {
+    dynamicStepMs = DYNAMIC_START_STEP_MS;
+    updateSpeedFromUI();
+  } catch (e) {}
   try {
     if (scoreCounterEl) scoreCounterEl.textContent = `Score: ${score}`;
+  } catch (e) {}
+  try {
+    // ensure the progress bar width matches the visible canvas
+    syncDynamicBarWidth();
   } catch (e) {}
   isGameOver = false;
   gameOverReason = "";
@@ -1288,6 +1306,11 @@ function enterGameScreen(opts = { restartMusic: true }) {
   try {
     if (pauseBtn) pauseBtn.setAttribute("aria-hidden", "false");
   } catch (e) {}
+  try {
+    // expose dynamic difficulty bar and main label to screen readers while in game
+    if (dynamicBarEl) dynamicBarEl.setAttribute("aria-hidden", "false");
+    if (mainDifficultyLabelEl) mainDifficultyLabelEl.setAttribute("aria-hidden", "false");
+  } catch (e) {}
   startLoop();
   try {
     try {
@@ -1309,6 +1332,11 @@ function enterScoreScreen() {
   } catch (e) {}
   try {
     show(scoreCounterEl);
+  } catch (e) {}
+  try {
+    // hide dynamic difficulty bar and main label from screen readers on score screen
+    if (dynamicBarEl) dynamicBarEl.setAttribute("aria-hidden", "true");
+    if (mainDifficultyLabelEl) mainDifficultyLabelEl.setAttribute("aria-hidden", "true");
   } catch (e) {}
   document.body.classList.remove("screen-start");
   document.body.classList.remove("screen-game");
@@ -1383,6 +1411,17 @@ function update() {
 
   if (willGrow) {
     score += 1;
+    try {
+      // If dynamic difficulty selected, make the game slightly faster per food
+      const sel = document.querySelector('.difficultyPill.selected, .difficultyPill[aria-checked="true"]');
+      if (sel && String(sel.dataset.ms || "").trim() === "dynamic") {
+        dynamicStepMs = Math.max(DYNAMIC_MIN_STEP_MS, dynamicStepMs - 1); // increase difficulty (lower ms)
+        updateSpeedFromUI();
+        try {
+          updateDynamicBar();
+        } catch (e) {}
+      }
+    } catch (e) {}
     // update DOM score counter
     try {
       if (scoreCounterEl) scoreCounterEl.textContent = `Score: ${score}`;
@@ -1877,6 +1916,10 @@ if (difficultyPills?.length) {
       } else if (screen === Screens.GAME) {
         updateSpeedFromUI();
       }
+      // update dynamic bar visuals when user selects a difficulty
+      try {
+        updateDynamicBar();
+      } catch (e) {}
     });
   });
 }
@@ -1884,20 +1927,114 @@ if (difficultyPills?.length) {
 function readDifficultyFromPills() {
   const sel = document.querySelector(".difficultyPill.selected, .difficultyPill[aria-checked='true']");
   if (!sel) return { ms: 25, label: "normal" };
-  const ms = Number(sel.dataset.ms);
+  const raw = String(sel.dataset.ms || "").trim();
   const label = (sel.dataset.label || sel.textContent || "normal").trim().toLowerCase();
+  if (raw === "dynamic") {
+    return { ms: dynamicStepMs / SPEED_MULT, label };
+  }
+  const ms = Number(raw);
   return { ms: Number.isFinite(ms) ? ms : 25, label };
+}
+
+// Dynamic difficulty progress bar helpers
+const BAR_MAX_MS = 180;
+const BAR_MIN_MS = 60;
+const BAR_THRESHOLDS = [
+  { label: "Easy", ms: 180 },
+  { label: "Normal", ms: 120 },
+  { label: "Hard", ms: 60 },
+];
+let dynamicBarEl = null;
+let dynamicBarFill = null;
+let dynamicBarTicks = null;
+let dynamicBarLabel = null;
+let mainDifficultyLabelEl = null;
+
+function initDynamicBar() {
+  dynamicBarEl = document.querySelector(".dynamicBar");
+  if (!dynamicBarEl) return;
+  dynamicBarFill = dynamicBarEl.querySelector(".dynamicBar__fill");
+  dynamicBarTicks = dynamicBarEl.querySelector(".dynamicBar__ticks");
+  // dynamicBarLabel is now a stand-alone element below the canvas
+  mainDifficultyLabelEl = document.querySelector(".mainDifficultyLabel");
+  // create ticks
+  dynamicBarTicks.innerHTML = "";
+  BAR_THRESHOLDS.forEach((t) => {
+    const el = document.createElement("div");
+    el.className = "tick";
+    const pct = ((BAR_MAX_MS - t.ms) / (BAR_MAX_MS - BAR_MIN_MS)) * 100;
+    el.style.left = `${pct}%`;
+    el.dataset.ms = String(t.ms);
+    el.innerHTML = `<div class="dot"></div><div class="txt">${t.label}</div>`;
+    dynamicBarTicks.appendChild(el);
+  });
+  updateDynamicBar();
+
+  // ensure bar width still matches canvas after ticks constructed
+  try {
+    syncDynamicBarWidth();
+  } catch (e) {}
+}
+
+function updateDynamicBar() {
+  if (!dynamicBarEl) return;
+  // Determine currently selected difficulty
+  const sel = document.querySelector('.difficultyPill.selected, .difficultyPill[aria-checked="true"]');
+  const isDynamic = sel && String(sel.dataset.ms || "").trim() === "dynamic";
+  const currentMs = isDynamic ? dynamicStepMs : sel ? Number(sel.dataset.ms) : stepMs;
+  const label = (sel && (sel.dataset.label || sel.textContent)) || "—";
+  const prettyLabel = String(label).trim();
+  const displayLabel = prettyLabel && prettyLabel !== "—" ? prettyLabel.charAt(0).toUpperCase() + prettyLabel.slice(1).toLowerCase() : "—";
+  // compute fill percent across BAR_MIN..BAR_MAX
+  const pct = Math.max(0, Math.min(100, ((BAR_MAX_MS - currentMs) / (BAR_MAX_MS - BAR_MIN_MS)) * 100));
+  dynamicBarFill.style.width = `${pct}%`;
+  if (dynamicBarLabel) dynamicBarLabel.textContent = displayLabel;
+  if (mainDifficultyLabelEl) mainDifficultyLabelEl.textContent = displayLabel;
+  // highlight nearest threshold tick
+  try {
+    const ticks = Array.from(dynamicBarTicks.querySelectorAll(".tick"));
+    let nearest = null;
+    let bestDiff = Infinity;
+    ticks.forEach((t) => {
+      const tv = Number(t.dataset.ms);
+      const diff = Math.abs(currentMs - tv);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        nearest = t;
+      }
+      t.classList.remove("active");
+    });
+    if (nearest) nearest.classList.add("active");
+  } catch (e) {}
 }
 
 function updateSpeedFromUI() {
   const { ms, label } = readDifficultyFromPills();
   stepMs = ms * SPEED_MULT;
   currentSpeedLabel = label;
+  try {
+    updateDynamicBar();
+  } catch (e) {}
 }
 
 function getSelectedSpeedLabel() {
   return readDifficultyFromPills().label;
 }
+
+// ---- Helpers ----
+let __dynBarResizeTimeout = null;
+function syncDynamicBarWidth() {
+  if (!dynamicBarEl || !canvas) return;
+  try {
+    const rect = canvas.getBoundingClientRect();
+    // Set exact width to match canvas display width
+    dynamicBarEl.style.width = `${Math.round(rect.width)}px`;
+  } catch (e) {}
+}
+window.addEventListener("resize", () => {
+  clearTimeout(__dynBarResizeTimeout);
+  __dynBarResizeTimeout = setTimeout(syncDynamicBarWidth, 120);
+});
 
 // ---- Boot ----
 (function boot() {
@@ -1973,5 +2110,8 @@ function getSelectedSpeedLabel() {
   } catch (e) {}
   try {
     pauseBtn && pauseBtn.addEventListener("click", toggleGamePause);
+  } catch (e) {}
+  try {
+    initDynamicBar();
   } catch (e) {}
 })();

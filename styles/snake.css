@@ -938,6 +938,120 @@ body.screen-start .canvas {
   flex-wrap: wrap;
 }
 
+/* Dynamic difficulty progress bar */
+.dynamicBar {
+  margin-top: 10px;
+  display: none; /* hidden by default; visible only on Game screen */
+  align-items: center;
+  gap: 10px;
+}
+.dynamicBar__track {
+  position: relative;
+  width: min(720px);
+  max-width: 720px;
+  height: 10px;
+  /* match button colors (subtle translucent white) */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border-radius: 6px;
+  overflow: visible;
+  margin: 0 auto;
+}
+.dynamicBar__fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  /* use accent colors matching buttons (arcade orange) */
+  background: linear-gradient(90deg, rgba(255, 140, 60, 0.95), rgba(255, 200, 120, 0.95));
+  border-radius: 6px 0 0 6px;
+  transition: width 220ms linear;
+}
+.dynamicBar__ticks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%; /* place ticks below the bar */
+  height: 36px;
+  pointer-events: none;
+}
+.dynamicBar__ticks .tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.9);
+}
+.dynamicBar__ticks .tick .dot {
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  margin: -10px auto 6px; /* negative margin to overlap track */
+}
+.dynamicBar__ticks .tick.active .dot {
+  background: linear-gradient(90deg, rgba(255, 140, 60, 0.95), rgba(255, 200, 120, 0.95));
+  box-shadow: 0 0 8px rgba(255, 160, 80, 0.6);
+  transform: scale(1.15);
+}
+.dynamicBar__ticks .tick .txt {
+  display: block;
+  line-height: 1;
+  font-size: 10px;
+  opacity: 0.95;
+  margin-top: 2px; /* label sits below the dot */
+}
+.dynamicBar__label {
+  min-width: 120px;
+  font-size: 12px;
+  color: #fff;
+  opacity: 0.95;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .dynamicBar__track {
+    width: 220px;
+  }
+  .dynamicBar__label {
+    min-width: 88px;
+    font-size: 11px;
+  }
+  .dynamicBar {
+    width: calc(100% - 28px);
+    margin-top: 8px;
+  }
+}
+
+/* Dynamic bar: positioned below the canvas and centered */
+.dynamicBar {
+  display: none; /* shown only when game screen active */
+  margin: 12px auto 0;
+  z-index: 6;
+  width: auto; /* width will be synced to canvas via JS */
+  max-width: none;
+  justify-content: center;
+  padding: 6px;
+}
+body.screen-game .dynamicBar {
+  display: flex;
+}
+
+/* Main difficulty label shown above the progress bar, centered and matching spacing */
+.mainDifficultyLabel {
+  display: none;
+  margin: 8px auto 4px; /* same spacing as .gameControlsRow's margin-bottom */
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+  min-height: 18px;
+}
+body.screen-game .mainDifficultyLabel {
+  display: block;
+}
+
 .difficultyPill {
   cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.25);
