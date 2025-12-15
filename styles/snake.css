@@ -291,9 +291,11 @@ body.screen-game .restartBtn {
   padding: 6px 10px;
   cursor: pointer;
 }
+
 .pauseBtn:hover {
   background: rgba(255, 255, 255, 0.12);
 }
+
 .musicPrevBtn:hover,
 .musicNextBtn:hover,
 .musicPlayPauseBtn:hover {
@@ -327,6 +329,7 @@ body.screen-game .restartBtn {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
 }
+
 .volumeControl input[type="range"]::-webkit-slider-thumb,
 .musicProgressRow input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -346,6 +349,7 @@ body.screen-game .restartBtn {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
 }
+
 .volumeControl input[type="range"]::-moz-range-thumb,
 .musicProgressRow input[type="range"]::-moz-range-thumb {
   width: 16px;
@@ -752,7 +756,7 @@ body.screen-game .canvas {
   visibility: visible; /* ensure visible when game active */
   outline: 6px solid rgba(255, 208, 0, 0.95); /* bright border to indicate walls */
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(255, 140, 60, 0.12) inset;
-  /* background: url("../images/grass1.jpeg") center/cover no-repeat !important */
+  background: url("../images/grass1.jpeg") center/cover no-repeat !important;
 }
 
 body.screen-start .canvas {
