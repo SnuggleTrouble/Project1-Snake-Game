@@ -1538,6 +1538,23 @@ function drawDebugOverlayHUD() {
 function render() {
   ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
+  try {
+    ctx.save();
+    ctx.globalCompositeOperation = "overlay";
+    ctx.globalAlpha = 0.06;
+    for (let y = 0; y < CANVAS_SIZE; y += 3) {
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(0, y, CANVAS_SIZE, 1);
+    }
+    const band = ctx.createLinearGradient(0, CANVAS_SIZE * 0.38, 0, CANVAS_SIZE * 0.62);
+    band.addColorStop(0, "rgba(255,180,100,0) ");
+    band.addColorStop(0.5, "rgba(255,180,100,0.02)");
+    band.addColorStop(1, "rgba(255,180,100,0)");
+    ctx.fillStyle = band;
+    ctx.fillRect(0, CANVAS_SIZE * 0.38, CANVAS_SIZE, CANVAS_SIZE * 0.24);
+    ctx.restore();
+  } catch (e) {}
+
   if (showGrid) {
     ctx.save();
     ctx.strokeStyle = "rgba(0,0,0,0.15)";
@@ -1801,9 +1818,6 @@ window.addEventListener("keydown", (e) => {
       }
       return;
 
-    case "Escape":
-      if (screen === Screens.GAME) enterScoreScreen();
-      return;
     default:
       return;
   }
