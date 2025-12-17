@@ -75,7 +75,6 @@
               Dynamic
             </button>
           </div>
-            <!-- Dynamic difficulty progress bar (moved to in-game controls) -->
         </div>
         <br />
 
@@ -95,6 +94,27 @@
       <div class="scoreListContainer">
         <h2 class="finalScore">🏆 Top Scores</h2>
         <ul class="highScoresList"></ul>
+
+        <!-- Screenshot download -->
+        <div
+          class="screenshotDownloadRow"
+          aria-live="polite">
+          <img
+            class="lastScreenshotPreview"
+            alt="Last saved screenshot preview" />
+          <div class="screenshotButtons">
+            <button
+              class="downloadScreenshotBtn"
+              type="button">
+              Download last screenshot
+            </button>
+            <button
+              class="clearScreenshotBtn"
+              type="button">
+              Clear
+            </button>
+          </div>
+        </div>
       </div>
 
       <button class="resetScoreboardBtn">Reset Scoreboard</button>
@@ -110,10 +130,12 @@
           aria-pressed="false">
           Pause
         </button>
-        <div class="scoreCounter" aria-live="polite">Score: 0</div>
+        <div
+          class="scoreCounter"
+          aria-live="polite">
+          Score: 0
+        </div>
       </div>
-
-
 
       <div class="volumeControl">
         <label for="sfxVolume">SFX Volume</label>
@@ -188,8 +210,6 @@
           class="canvas-ui"
           aria-hidden="true"></canvas>
 
-
-          
         <div
           class="pausedOverlay"
           role="status"
@@ -205,15 +225,35 @@
           class="gameOverOverlay"
           id="gameOverOverlay"
           style="display: none">
+          <div class="overlayContent">
+            <div
+              class="overlayText"
+              id="overlayText">
+              Game Over
+            </div>
+            <button
+              class="saveScreenshotBtn"
+              type="button">
+              Save Screenshot
+            </button>
           </div>
         </div>
 
         <!-- Main difficulty label (centered below canvas) -->
-        <div class="mainDifficultyLabel" aria-live="polite" aria-hidden="true">—</div>
+        <div
+          class="mainDifficultyLabel"
+          aria-live="polite"
+          aria-hidden="true">
+          —
+        </div>
 
         <!-- Dynamic difficulty progress bar (visible in-game only; positioned below canvas) -->
-        <div class="dynamicBar" aria-hidden="true">
-          <div class="dynamicBar__track" aria-hidden="true">
+        <div
+          class="dynamicBar"
+          aria-hidden="true">
+          <div
+            class="dynamicBar__track"
+            aria-hidden="true">
             <div class="dynamicBar__fill"></div>
             <div class="dynamicBar__ticks"></div>
           </div>
@@ -234,8 +274,16 @@
     <div
       class="gameFooter"
       role="contentinfo">
-      Created by <strong><a href="https://github.com/SnuggleTrouble" target="_blank" rel="noopener noreferrer">SnuggleTrouble</a></strong>
-      <br>
+      Created by
+      <strong
+        ><a
+          href="https://github.com/SnuggleTrouble"
+          target="_blank"
+          rel="noopener noreferrer"
+          >SnuggleTrouble</a
+        ></strong
+      >
+      <br />
       Music by the amazing
       <strong
         ><a

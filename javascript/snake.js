@@ -11,6 +11,8 @@ const highScoresList = document.querySelector(".highScoresList");
 const finalScoreHeading = document.querySelector(".finalScore");
 const usernameInput = document.querySelector("#username");
 const gameOverOverlay = document.querySelector("#gameOverOverlay");
+const overlayTextEl = document.querySelector("#overlayText");
+const saveScreenshotBtn = document.querySelector(".saveScreenshotBtn");
 const startInstructionsOverlay = document.querySelector("#startInstructionsOverlay");
 const difficultyPills = document.querySelectorAll(".difficultyPill");
 const volumeSlider = document.querySelector("#volume");
@@ -24,6 +26,10 @@ const volumePercent = document.querySelector(".volumePercent");
 const pauseBtn = document.querySelector(".pauseBtn");
 const pausedOverlayEl = document.querySelector(".pausedOverlay");
 const scoreCounterEl = document.querySelector(".scoreCounter");
+const screenshotDownloadRow = document.querySelector(".screenshotDownloadRow");
+const lastScreenshotPreview = document.querySelector(".lastScreenshotPreview");
+const downloadScreenshotBtn = document.querySelector(".downloadScreenshotBtn");
+const clearScreenshotBtn = document.querySelector(".clearScreenshotBtn");
 
 const HUD_FONT_FAMILY = '"Press Start 2P", monospace';
 function setHudFont(px, mono = false) {
@@ -1150,6 +1156,76 @@ const Scoreboard = (() => {
   }
 })();
 
+// ---- Screenshot evidence (localStorage) ----
+const SCREENSHOT_KEY = "snake:lastScreenshot";
+
+function safeJsonParse(v, fallback = null) {
+  try {
+    return JSON.parse(v);
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function getLastScreenshot() {
+  try {
+    return safeJsonParse(localStorage.getItem(SCREENSHOT_KEY), null);
+  } catch (e) {
+    return null;
+  }
+}
+
+function updateScreenshotDownloadUI() {
+  if (!screenshotDownloadRow) return;
+  const shot = getLastScreenshot();
+  if (!shot || !shot.dataUrl) {
+    screenshotDownloadRow.classList.remove("visible");
+    try {
+      if (lastScreenshotPreview) lastScreenshotPreview.removeAttribute("src");
+    } catch (e) {}
+    return;
+  }
+  screenshotDownloadRow.classList.add("visible");
+  try {
+    if (lastScreenshotPreview) lastScreenshotPreview.src = shot.dataUrl;
+  } catch (e) {}
+}
+
+function downloadDataUrl(dataUrl, filename) {
+  try {
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = filename || "snake-screenshot.png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (e) {}
+}
+
+function saveScreenshotEvidence(outcomeText) {
+  if (!canvas) return;
+  try {
+    const dataUrl = canvas.toDataURL("image/png");
+    const payload = {
+      ts: Date.now(),
+      name: usernameInput?.value?.trim() || "Anonymous",
+      score,
+      difficulty: currentSpeedLabel,
+      outcome: outcomeText || gameOverReason || "",
+      dataUrl,
+    };
+    try {
+      localStorage.setItem(SCREENSHOT_KEY, JSON.stringify(payload));
+    } catch (e) {
+      // localStorage can fill up (PNG data URLs are large). If it fails, we just don't persist.
+      console.warn("Failed to store screenshot in localStorage", e);
+    }
+    updateScreenshotDownloadUI();
+  } catch (e) {
+    console.warn("Failed to capture screenshot", e);
+  }
+}
+
 // ---- Screens ----
 function enterStartScreen() {
   screen = Screens.START;
@@ -1222,6 +1298,9 @@ function enterStartScreen() {
   const lbl = getSelectedSpeedLabel();
   if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
   Scoreboard.display(lbl);
+  try {
+    updateScreenshotDownloadUI();
+  } catch (e) {}
 }
 
 function enterGameScreen(opts = { restartMusic: true }) {
@@ -1711,9 +1790,17 @@ function render() {
   }
 
   if (isGameOver && gameOverOverlay) {
-    gameOverOverlay.textContent = `Game Over — ${gameOverReason}`;
+    try {
+      if (overlayTextEl) overlayTextEl.textContent = `Game Over — ${gameOverReason}`;
+    } catch (e) {}
+    try {
+      if (saveScreenshotBtn) saveScreenshotBtn.style.display = "inline-flex";
+    } catch (e) {}
     gameOverOverlay.style.display = "flex";
   } else if (gameOverOverlay) {
+    try {
+      if (saveScreenshotBtn) saveScreenshotBtn.style.display = "none";
+    } catch (e) {}
     gameOverOverlay.style.display = "none";
   }
 
@@ -1981,6 +2068,21 @@ function updateDynamicBar() {
   // Determine currently selected difficulty
   const sel = document.querySelector('.difficultyPill.selected, .difficultyPill[aria-checked="true"]');
   const isDynamic = sel && String(sel.dataset.ms || "").trim() === "dynamic";
+
+  // Visibility rules:
+  // - Easy/Normal/Hard => show ONLY the main label, hide the progress bar
+  // - Dynamic          => show ONLY the progress bar, hide the label
+  const inGame = screen === Screens.GAME;
+  try {
+    if (dynamicBarEl) {
+      dynamicBarEl.style.display = inGame && isDynamic ? "flex" : "none";
+      dynamicBarEl.setAttribute("aria-hidden", inGame && isDynamic ? "false" : "true");
+    }
+    if (mainDifficultyLabelEl) {
+      mainDifficultyLabelEl.style.display = inGame && !isDynamic ? "block" : "none";
+      mainDifficultyLabelEl.setAttribute("aria-hidden", inGame && !isDynamic ? "false" : "true");
+    }
+  } catch (e) {}
   const currentMs = isDynamic ? dynamicStepMs : sel ? Number(sel.dataset.ms) : stepMs;
   const label = (sel && (sel.dataset.label || sel.textContent)) || "—";
   const prettyLabel = String(label).trim();
@@ -2113,5 +2215,46 @@ window.addEventListener("resize", () => {
   } catch (e) {}
   try {
     initDynamicBar();
+  } catch (e) {}
+
+  // Screenshot evidence wiring
+  try {
+    updateScreenshotDownloadUI();
+  } catch (e) {}
+  try {
+    if (saveScreenshotBtn) {
+      saveScreenshotBtn.addEventListener("click", () => {
+        // capture the raw canvas; overlay text is DOM, intentionally not baked into the image
+        saveScreenshotEvidence(gameOverReason || "");
+        try {
+          saveScreenshotBtn.textContent = "Saved!";
+          setTimeout(() => {
+            try {
+              saveScreenshotBtn.textContent = "Save Screenshot";
+            } catch (e) {}
+          }, 900);
+        } catch (e) {}
+      });
+    }
+    if (downloadScreenshotBtn) {
+      downloadScreenshotBtn.addEventListener("click", () => {
+        const shot = getLastScreenshot();
+        if (!shot || !shot.dataUrl) return;
+        const d = new Date(shot.ts || Date.now());
+        const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}_${String(
+          d.getHours()
+        ).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}${String(d.getSeconds()).padStart(2, "0")}`;
+        const fname = `snake_screenshot_${stamp}.png`;
+        downloadDataUrl(shot.dataUrl, fname);
+      });
+    }
+    if (clearScreenshotBtn) {
+      clearScreenshotBtn.addEventListener("click", () => {
+        try {
+          localStorage.removeItem(SCREENSHOT_KEY);
+        } catch (e) {}
+        updateScreenshotDownloadUI();
+      });
+    }
   } catch (e) {}
 })();

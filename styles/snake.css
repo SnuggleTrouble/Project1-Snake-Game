@@ -754,7 +754,6 @@ body.screen-game .canvasFrame {
 
 body.screen-game .canvas {
   visibility: visible; /* ensure visible when game active */
-  outline: 6px solid rgba(255, 208, 0, 0.95); /* bright border to indicate walls */
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(255, 140, 60, 0.12) inset;
   background: url("../images/grass1.jpeg") center/cover no-repeat !important;
 }
@@ -1024,21 +1023,19 @@ body.screen-start .canvas {
   }
 }
 
-/* Dynamic bar: positioned below the canvas and centered */
 .dynamicBar {
   display: none; /* shown only when game screen active */
   margin: 12px auto 0;
   z-index: 6;
-  width: auto; /* width will be synced to canvas via JS */
+  width: auto;
   max-width: none;
   justify-content: center;
   padding: 6px;
 }
 body.screen-game .dynamicBar {
-  display: flex;
+  display: none;
 }
 
-/* Main difficulty label shown above the progress bar, centered and matching spacing */
 .mainDifficultyLabel {
   display: none;
   margin: 8px auto 4px; /* same spacing as .gameControlsRow's margin-bottom */
@@ -1049,7 +1046,65 @@ body.screen-game .dynamicBar {
   min-height: 18px;
 }
 body.screen-game .mainDifficultyLabel {
+  display: none;
+}
+
+/* Screenshot controls */
+.gameOverOverlay .overlayContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.gameOverOverlay .overlayText {
+  font-size: 32px;
+  line-height: 1.35;
+}
+
+.saveScreenshotBtn {
+  font-size: 12px;
+  padding: 10px 14px;
+}
+
+.screenshotDownloadRow {
+  display: none;
+  margin-top: 10px;
+  padding: 10px;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+}
+
+.screenshotDownloadRow.visible {
+  display: flex;
+}
+
+.lastScreenshotPreview {
+  width: 120px;
+  height: auto;
+  border-radius: 6px;
+  outline: 2px solid rgba(255, 255, 255, 0.12);
+  display: none;
+}
+
+.screenshotDownloadRow.visible .lastScreenshotPreview {
   display: block;
+}
+
+.screenshotButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.downloadScreenshotBtn,
+.clearScreenshotBtn {
+  font-size: 12px;
+  padding: 8px 12px;
 }
 
 .difficultyPill {
