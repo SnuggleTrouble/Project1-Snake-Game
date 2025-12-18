@@ -125,6 +125,7 @@ button:active {
   transform: translateX(-50%) translateY(-3px) scale(1.01);
   box-shadow: 0 14px 24px rgba(0, 0, 0, 0.28), 0 6px 10px rgba(0, 0, 0, 0.12);
 }
+
 .playAgainBtn:active {
   transform: translateX(-50%) translateY(0) scale(0.995);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
@@ -145,14 +146,17 @@ body.screen-game .restartBtn {
   z-index: 300;
   display: block;
 }
+
 body.screen-game .toggleGridBtn {
   top: 10px;
 }
+
 body.screen-game .playAgainBtn {
   top: 54px;
   transform: none;
   left: 10px;
 }
+
 body.screen-game .restartBtn {
   top: 98px;
 }
@@ -199,6 +203,7 @@ body.screen-game .restartBtn {
     align-items: center;
     justify-content: center;
   }
+
   .volumeControl {
     display: none;
     position: fixed;
@@ -212,12 +217,15 @@ body.screen-game .restartBtn {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
     z-index: 10000;
   }
+
   .volumeControl.open {
     display: flex;
   }
+
   .musicProgressRow input[type="range"] {
     width: 100%;
   }
+
   .musicControls {
     justify-content: flex-start;
   }
@@ -229,15 +237,18 @@ body.screen-game .restartBtn {
     left: 8px;
     right: auto;
   }
+
   body.screen-game .playAgainBtn {
     top: 48px;
     left: 8px;
     transform: none;
   }
+
   body.screen-game .restartBtn {
     top: 92px;
     left: 8px;
   }
+
   .volumeControl.open {
     width: calc(100% - 16px);
     right: 8px;
@@ -313,6 +324,7 @@ body.screen-game .restartBtn {
   font-size: 12px;
   opacity: 0.95;
 }
+
 .volumeControl input[type="range"],
 .musicProgressRow input[type="range"] {
   width: 140px;
@@ -382,6 +394,7 @@ body.screen-game .restartBtn {
   0% {
     transform: translateX(100%);
   }
+
   100% {
     transform: translateX(-100%);
   }
@@ -397,6 +410,7 @@ body.screen-game .restartBtn {
   .trackScroll .trackLabel {
     animation: none;
   }
+
   .arcadeTitle {
     animation: none !important;
   }
@@ -405,13 +419,16 @@ body.screen-game .restartBtn {
 .musicIndicator {
   display: none;
 }
+
 @keyframes pulse {
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.4);
   }
+
   100% {
     transform: scale(1);
   }
@@ -475,6 +492,7 @@ body.screen-score .musicToggleBtn.inGame {
   .gameControlsRow {
     gap: 6px;
   }
+
   .scoreCounter {
     min-width: 64px;
     font-size: 12px;
@@ -485,6 +503,7 @@ body.screen-score .musicToggleBtn.inGame {
 .pauseBtn {
   display: none;
 }
+
 body.screen-game .pauseBtn {
   display: inline-block;
 }
@@ -503,20 +522,24 @@ body.screen-game .pauseBtn {
   opacity: 0;
   transition: visibility 0.1s linear, opacity 160ms ease;
 }
+
 .pausedOverlay.active {
   visibility: visible;
   opacity: 1;
 }
+
 .pausedOverlay .pausedInner {
   background: rgba(0, 0, 0, 0.6);
   padding: 18px 20px;
   border-radius: 10px;
   text-align: center;
 }
+
 .pausedOverlay h2 {
   font-size: 18px;
   margin-bottom: 8px;
 }
+
 .pausedOverlay p {
   font-size: 12px;
   margin: 0;
@@ -537,6 +560,27 @@ body.screen-game .pauseBtn {
   backdrop-filter: blur(2px);
 }
 
+/* Highlight active scoreboard difficulty */
+.scoreListContainer {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.scoreListContainer[data-difficulty="easy"] {
+  box-shadow: 0 0 0 2px rgba(120, 255, 120, 0.35);
+}
+
+.scoreListContainer[data-difficulty="normal"] {
+  box-shadow: 0 0 0 2px rgba(120, 180, 255, 0.35);
+}
+
+.scoreListContainer[data-difficulty="hard"] {
+  box-shadow: 0 0 0 2px rgba(255, 120, 120, 0.35);
+}
+
+.scoreListContainer[data-difficulty="dynamic"] {
+  box-shadow: 0 0 0 2px rgba(255, 200, 120, 0.4);
+}
+
 .finalScore {
   font-family: "Press Start 2P", monospace;
   font-size: 32px;
@@ -546,21 +590,25 @@ body.screen-game .pauseBtn {
 .highScoresList {
   width: 320px;
 }
+
 .highScoresList .score-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 2px 6px;
 }
+
 .highScoresList .left {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
+
 .highScoresList .medal {
   width: 1.6em;
   text-align: center;
 }
+
 .highScoresList .badge {
   display: inline-block;
   min-width: 1.6em;
@@ -570,6 +618,7 @@ body.screen-game .pauseBtn {
   background: rgba(255, 255, 255, 0.12);
   font-weight: 600;
 }
+
 .highScoresList .name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -600,7 +649,7 @@ body.screen-game .pauseBtn {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.2);
-  z-index: 100;
+  z-index: 50;
   font-size: 32px;
   color: #fff;
   font-family: "Press Start 2P", monospace;
@@ -648,9 +697,11 @@ body.screen-game .pauseBtn {
   0% {
     box-shadow: inset 0 0 30px rgba(255, 180, 70, 0.04);
   }
+
   50% {
     box-shadow: inset 0 0 90px rgba(255, 180, 70, 0.12);
   }
+
   100% {
     box-shadow: inset 0 0 30px rgba(255, 180, 70, 0.04);
   }
@@ -697,7 +748,8 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0; /* sit behind UI elements but above background */
+  z-index: 0;
+  /* sit behind UI elements but above background */
   opacity: 0;
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.12) 12%, rgba(0, 0, 0, 0) 18%);
   mix-blend-mode: screen;
@@ -713,6 +765,7 @@ body.screen-start::before {
   0% {
     transform: translateY(-105%);
   }
+
   100% {
     transform: translateY(105%);
   }
@@ -722,6 +775,7 @@ body.screen-start::before {
   .crtOverlay {
     animation: none !important;
   }
+
   .crtOverlay::after {
     animation: none !important;
     opacity: 0 !important;
@@ -744,6 +798,7 @@ body.screen-start .canvas {
   visibility: visible;
   filter: saturate(0.9) contrast(1.02);
 }
+
 body.screen-game .crtOverlay {
   opacity: 0;
 }
@@ -753,7 +808,8 @@ body.screen-game .canvasFrame {
 }
 
 body.screen-game .canvas {
-  visibility: visible; /* ensure visible when game active */
+  visibility: visible;
+  outline: 6px solid rgba(255, 208, 0, 0.95);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(255, 140, 60, 0.12) inset;
   background: url("../images/grass1.jpeg") center/cover no-repeat !important;
 }
@@ -790,10 +846,12 @@ body.screen-start .canvas {
     text-shadow: 0 0 8px rgba(255, 190, 70, 0.35), 0 0 18px rgba(255, 124, 54, 0.2);
     transform: translateY(0);
   }
+
   50% {
     text-shadow: 0 0 12px rgba(255, 220, 90, 0.9), 0 0 36px rgba(255, 160, 90, 0.6);
     transform: translateY(-2px);
   }
+
   100% {
     text-shadow: 0 0 8px rgba(255, 190, 70, 0.35), 0 0 18px rgba(255, 124, 54, 0.2);
     transform: translateY(0);
@@ -804,12 +862,15 @@ body.screen-start .canvas {
   0% {
     transform: translateY(0);
   }
+
   35% {
     transform: translateY(-6px);
   }
+
   55% {
     transform: translateY(0);
   }
+
   100% {
     transform: translateY(0);
   }
@@ -819,9 +880,11 @@ body.screen-start .canvas {
   0% {
     text-shadow: 0 0 2px rgba(255, 190, 70, 0.12);
   }
+
   50% {
     text-shadow: 0 0 18px rgba(255, 190, 70, 0.9), 0 0 28px rgba(255, 124, 54, 0.45);
   }
+
   100% {
     text-shadow: 0 0 2px rgba(255, 190, 70, 0.12);
   }
@@ -851,9 +914,11 @@ body.screen-start .canvas {
   0% {
     box-shadow: 0 0 4px rgba(255, 180, 70, 0.08), 0 8px 30px rgba(255, 180, 70, 0.35);
   }
+
   50% {
     box-shadow: 0 0 14px rgba(255, 180, 70, 0.28), 0 10px 40px rgba(255, 180, 70, 0.45);
   }
+
   100% {
     box-shadow: 0 0 4px rgba(255, 180, 70, 0.08), 0 8px 30px rgba(255, 180, 70, 0.35);
   }
@@ -871,6 +936,7 @@ body.screen-start .canvas {
   line-height: 1.5;
   margin-bottom: 8px;
 }
+
 .tips {
   text-align: left;
   margin: 8px auto 12px;
@@ -878,13 +944,16 @@ body.screen-start .canvas {
   display: grid;
   gap: 6px;
 }
+
 .tips li::marker {
   content: none;
 }
+
 .tips li {
   position: relative;
   padding-left: 26px;
 }
+
 .tips li::before {
   content: "◆";
   position: absolute;
@@ -937,13 +1006,12 @@ body.screen-start .canvas {
   flex-wrap: wrap;
 }
 
-/* Dynamic difficulty progress bar */
+/* Difficulty UI containers (visibility controlled by JS) */
 .dynamicBar {
-  margin-top: 10px;
-  display: none; /* hidden by default; visible only on Game screen */
-  align-items: center;
-  gap: 10px;
+  margin: 12px auto 0;
+  display: none;
 }
+
 .dynamicBar__track {
   position: relative;
   width: min(720px);
@@ -955,6 +1023,7 @@ body.screen-start .canvas {
   overflow: visible;
   margin: 0 auto;
 }
+
 .dynamicBar__fill {
   position: absolute;
   left: 0;
@@ -966,14 +1035,17 @@ body.screen-start .canvas {
   border-radius: 6px 0 0 6px;
   transition: width 220ms linear;
 }
+
 .dynamicBar__ticks {
   position: absolute;
   left: 0;
   right: 0;
-  top: 100%; /* place ticks below the bar */
+  top: 100%;
+  /* place ticks below the bar */
   height: 36px;
   pointer-events: none;
 }
+
 .dynamicBar__ticks .tick {
   position: absolute;
   top: 0;
@@ -982,25 +1054,30 @@ body.screen-start .canvas {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.9);
 }
+
 .dynamicBar__ticks .tick .dot {
   width: 8px;
   height: 8px;
   background: rgba(255, 255, 255, 0.12);
   border-radius: 50%;
-  margin: -10px auto 6px; /* negative margin to overlap track */
+  margin: -10px auto 6px;
+  /* negative margin to overlap track */
 }
+
 .dynamicBar__ticks .tick.active .dot {
   background: linear-gradient(90deg, rgba(255, 140, 60, 0.95), rgba(255, 200, 120, 0.95));
   box-shadow: 0 0 8px rgba(255, 160, 80, 0.6);
   transform: scale(1.15);
 }
+
 .dynamicBar__ticks .tick .txt {
   display: block;
   line-height: 1;
   font-size: 10px;
   opacity: 0.95;
-  margin-top: 2px; /* label sits below the dot */
+  margin-top: 2px;
 }
+
 .dynamicBar__label {
   min-width: 120px;
   font-size: 12px;
@@ -1013,39 +1090,25 @@ body.screen-start .canvas {
   .dynamicBar__track {
     width: 220px;
   }
+
   .dynamicBar__label {
     min-width: 88px;
     font-size: 11px;
   }
+
   .dynamicBar {
     width: calc(100% - 28px);
     margin-top: 8px;
   }
 }
 
-.dynamicBar {
-  display: none; /* shown only when game screen active */
-  margin: 12px auto 0;
-  z-index: 6;
-  width: auto;
-  max-width: none;
-  justify-content: center;
-  padding: 6px;
-}
-body.screen-game .dynamicBar {
-  display: none;
-}
-
 .mainDifficultyLabel {
-  display: none;
-  margin: 8px auto 4px; /* same spacing as .gameControlsRow's margin-bottom */
+  margin: 8px auto 4px;
   text-align: center;
   font-weight: 700;
   font-size: 12px;
   color: #fff;
   min-height: 18px;
-}
-body.screen-game .mainDifficultyLabel {
   display: none;
 }
 
@@ -1064,8 +1127,19 @@ body.screen-game .mainDifficultyLabel {
 }
 
 .saveScreenshotBtn {
-  font-size: 12px;
+  margin-top: 12px;
   padding: 10px 14px;
+  font-size: 12px;
+  font-family: "Press Start 2P", monospace;
+  background: #222;
+  color: #ffd580;
+  border: 2px solid #ffd580;
+  cursor: pointer;
+}
+
+.saveScreenshotBtn:hover {
+  background: #ffd580;
+  color: #000;
 }
 
 .screenshotDownloadRow {
@@ -1234,7 +1308,7 @@ body.screen-start::after {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 3;
+  z-index: 10;
   pointer-events: none;
   background: transparent;
 }
@@ -1250,4 +1324,107 @@ body.screen-start::after {
 
 .playerForm .inputArea {
   text-overflow: ellipsis;
+}
+
+.score-row .right {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 18px;
+  /* space between score and icons */
+  min-width: 120px;
+  justify-content: end;
+}
+
+.score-row .value {
+  min-width: 48px;
+  text-align: right;
+}
+
+.score-row .shots {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shotIconWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.shotIcon {
+  background: transparent;
+  border: 0;
+  padding: 0 2px;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 16px;
+  opacity: 0.85;
+}
+
+.shotIcon {
+  opacity: 0.6;
+}
+
+.shotIcon:hover,
+.shotIcon:focus {
+  opacity: 1;
+}
+
+.shotTooltip {
+  position: absolute;
+  right: 0;
+  bottom: 140%;
+  display: none;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 10px;
+  z-index: 100;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.shotIconWrap:hover .shotTooltip,
+.shotIconWrap:focus-within .shotTooltip {
+  display: block;
+}
+
+.shotTooltip img {
+  display: block;
+  width: 140px;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* --- End overlay "Save Screenshot" button --- */
+.gameOverOverlay .overlayInner {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+.gameOverOverlay .overlayActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gameOverOverlay .saveScreenshotBtn {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  padding: 10px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.gameOverOverlay .saveScreenshotBtn:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.gameOverOverlay .saveShotStatus {
+  font-size: 0.9rem;
+  opacity: 0.9;
 }

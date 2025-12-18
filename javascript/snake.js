@@ -11,8 +11,6 @@ const highScoresList = document.querySelector(".highScoresList");
 const finalScoreHeading = document.querySelector(".finalScore");
 const usernameInput = document.querySelector("#username");
 const gameOverOverlay = document.querySelector("#gameOverOverlay");
-const overlayTextEl = document.querySelector("#overlayText");
-const saveScreenshotBtn = document.querySelector(".saveScreenshotBtn");
 const startInstructionsOverlay = document.querySelector("#startInstructionsOverlay");
 const difficultyPills = document.querySelectorAll(".difficultyPill");
 const volumeSlider = document.querySelector("#volume");
@@ -26,10 +24,8 @@ const volumePercent = document.querySelector(".volumePercent");
 const pauseBtn = document.querySelector(".pauseBtn");
 const pausedOverlayEl = document.querySelector(".pausedOverlay");
 const scoreCounterEl = document.querySelector(".scoreCounter");
-const screenshotDownloadRow = document.querySelector(".screenshotDownloadRow");
-const lastScreenshotPreview = document.querySelector(".lastScreenshotPreview");
-const downloadScreenshotBtn = document.querySelector(".downloadScreenshotBtn");
-const clearScreenshotBtn = document.querySelector(".clearScreenshotBtn");
+let pendingScoreSave = null;
+let lastProgressUpdate = 0;
 
 const HUD_FONT_FAMILY = '"Press Start 2P", monospace';
 function setHudFont(px, mono = false) {
@@ -122,6 +118,13 @@ function findSelfCollisionIndex(next, willGrow) {
 }
 
 // ---- Assets ----
+const grassImage = new Image();
+grassImage.src = "./images/grass1.jpeg";
+let grassReady = false;
+grassImage.onload = () => {
+  grassReady = true;
+};
+
 const appleImage = new Image();
 appleImage.src = "./images/apple1.png";
 let appleReady = false;
@@ -543,10 +546,15 @@ function updateProgressUI() {
   } catch (e) {}
 }
 
-function progressLoop() {
-  try {
+function progressLoop(t) {
+  if (!t) t = performance.now();
+
+  if (t - lastProgressUpdate > 250) {
+    // update 4× per second
+    lastProgressUpdate = t;
     updateProgressUI();
-  } catch (e) {}
+  }
+
   progressLoopId = requestAnimationFrame(progressLoop);
 }
 function startProgressLoop() {
@@ -1103,6 +1111,9 @@ let dir = { x: 1, y: 0 };
 let dirQueue = []; // up to 2 pending directions
 let hasStarted = false;
 let isGameOver = false;
+// Screenshots captured during the current run (for evidence)
+let currentRunShots = [];
+
 let isPaused = false;
 let gameOverReason = "";
 
@@ -1111,120 +1122,108 @@ const Scoreboard = (() => {
   const KEY = (bucket) => `highScores:${bucket || "all"}`;
   const MAX = 10;
 
+  function normalizeScores(raw) {
+    const arr = Array.isArray(raw) ? raw : [];
+    return arr.map((s) => ({
+      name: (s && s.name) || "Anonymous",
+      value: Number((s && s.value) || 0) || 0,
+      shots: Array.isArray(s && s.shots) ? s.shots.filter(Boolean) : [],
+    }));
+  }
+
   function load(b) {
     try {
-      return JSON.parse(localStorage.getItem(KEY(b))) || [];
+      return normalizeScores(JSON.parse(localStorage.getItem(KEY(b))) || []);
     } catch (e) {
       return [];
     }
   }
+
   function save(scores, b) {
     localStorage.setItem(KEY(b), JSON.stringify(scores));
   }
-  function push({ name, value }, bucket) {
+
+  // Keep screenshots only for the top 3 scores (everything else gets wiped to save space)
+  function enforceTop3Screenshots(scores) {
+    scores.forEach((s, i) => {
+      if (i >= 3 && s && Array.isArray(s.shots) && s.shots.length) s.shots = [];
+      if (i < 3 && s && !Array.isArray(s.shots)) s.shots = [];
+    });
+  }
+
+  function push({ name, value, shots = [] }, bucket) {
     const scores = load(bucket);
-    scores.push({ name: name || "Anonymous", value: Number(value) || 0 });
+    scores.push({
+      name: name || "Anonymous",
+      value: Number(value) || 0,
+      shots: Array.isArray(shots) ? shots.filter(Boolean) : [],
+    });
     scores.sort((a, b) => b.value - a.value);
     scores.splice(MAX);
+    enforceTop3Screenshots(scores);
     save(scores, bucket);
   }
+
   function display(bucket) {
     const scores = load(bucket);
     if (!scores.length) {
       highScoresList.innerHTML = "<li>No high scores yet</li>";
       return;
     }
+
     const medals = ["🥇", "🥈", "🥉"];
+
     highScoresList.innerHTML = scores
       .map((s, i) => {
         const rankBadge = i < 3 ? `<span class="medal">${medals[i]}</span>` : `<span class="badge">${i + 1}</span>`;
+
+        const shotsHtml =
+          s.shots && s.shots.length
+            ? `<span class="shots" aria-label="Screenshots">
+                ${s.shots
+                  .map((url, idx) => {
+                    const safeUrl = escapeAttr(url);
+                    const safeAlt = escapeAttr(`Screenshot ${idx + 1} for ${s.name}`);
+                    return `
+                      <span class="shotIconWrap">
+                        <button class="shotIcon" type="button" data-shot-url="${safeUrl}" aria-label="Download screenshot ${
+                      idx + 1
+                    }">📷</button>
+                        <span class="shotTooltip" role="tooltip" aria-hidden="true">
+                          <img src="${safeUrl}" alt="${safeAlt}" loading="lazy" />
+                        </span>
+                      </span>`;
+                  })
+                  .join("")}
+              </span>`
+            : "";
+
         return `
         <li class="score-row">
           <span class="left">
             ${rankBadge}
             <span class="name">${escapeHtml(s.name)}</span>
           </span>
-          <span class="value">${s.value}</span>
+          <span class="right">
+            <span class="value">${s.value}</span>
+            ${shotsHtml}
+          </span>
         </li>`;
       })
       .join("");
   }
+
   return { push, display, reset: (b) => localStorage.removeItem(KEY(b)) };
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
+
+  function escapeAttr(s) {
+    // attribute-safe (keeps it simple; data URLs are safe but avoid quotes/brackets)
+    return String(s).replace(/["'<>\n\r]/g, "");
+  }
 })();
-
-// ---- Screenshot evidence (localStorage) ----
-const SCREENSHOT_KEY = "snake:lastScreenshot";
-
-function safeJsonParse(v, fallback = null) {
-  try {
-    return JSON.parse(v);
-  } catch (e) {
-    return fallback;
-  }
-}
-
-function getLastScreenshot() {
-  try {
-    return safeJsonParse(localStorage.getItem(SCREENSHOT_KEY), null);
-  } catch (e) {
-    return null;
-  }
-}
-
-function updateScreenshotDownloadUI() {
-  if (!screenshotDownloadRow) return;
-  const shot = getLastScreenshot();
-  if (!shot || !shot.dataUrl) {
-    screenshotDownloadRow.classList.remove("visible");
-    try {
-      if (lastScreenshotPreview) lastScreenshotPreview.removeAttribute("src");
-    } catch (e) {}
-    return;
-  }
-  screenshotDownloadRow.classList.add("visible");
-  try {
-    if (lastScreenshotPreview) lastScreenshotPreview.src = shot.dataUrl;
-  } catch (e) {}
-}
-
-function downloadDataUrl(dataUrl, filename) {
-  try {
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = filename || "snake-screenshot.png";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } catch (e) {}
-}
-
-function saveScreenshotEvidence(outcomeText) {
-  if (!canvas) return;
-  try {
-    const dataUrl = canvas.toDataURL("image/png");
-    const payload = {
-      ts: Date.now(),
-      name: usernameInput?.value?.trim() || "Anonymous",
-      score,
-      difficulty: currentSpeedLabel,
-      outcome: outcomeText || gameOverReason || "",
-      dataUrl,
-    };
-    try {
-      localStorage.setItem(SCREENSHOT_KEY, JSON.stringify(payload));
-    } catch (e) {
-      // localStorage can fill up (PNG data URLs are large). If it fails, we just don't persist.
-      console.warn("Failed to store screenshot in localStorage", e);
-    }
-    updateScreenshotDownloadUI();
-  } catch (e) {
-    console.warn("Failed to capture screenshot", e);
-  }
-}
 
 // ---- Screens ----
 function enterStartScreen() {
@@ -1298,9 +1297,9 @@ function enterStartScreen() {
   const lbl = getSelectedSpeedLabel();
   if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
   Scoreboard.display(lbl);
-  try {
-    updateScreenshotDownloadUI();
-  } catch (e) {}
+  updateActiveScoreboardDifficulty();
+  updateResetScoreboardState();
+  updateResetScoreboardLabel();
 }
 
 function enterGameScreen(opts = { restartMusic: true }) {
@@ -1318,10 +1317,22 @@ function enterGameScreen(opts = { restartMusic: true }) {
   document.body.classList.add("screen-game");
   document.body.classList.remove("screen-start");
   document.body.classList.remove("screen-score");
+
+  // Reset end-of-run screenshots
+  currentRunShots = [];
+  try {
+    if (gameOverOverlay) {
+      gameOverOverlay.style.display = "none";
+      gameOverOverlay.setAttribute("aria-hidden", "true");
+      gameOverOverlay.innerHTML = "";
+    }
+  } catch (e) {}
+
   setBodyState(false);
   stopIdleWatch();
 
   updateSpeedFromUI();
+  updateDifficultyUIVisibility();
 
   score = 0;
   // reset dynamic difficulty to starting value on new game
@@ -1790,17 +1801,8 @@ function render() {
   }
 
   if (isGameOver && gameOverOverlay) {
-    try {
-      if (overlayTextEl) overlayTextEl.textContent = `Game Over — ${gameOverReason}`;
-    } catch (e) {}
-    try {
-      if (saveScreenshotBtn) saveScreenshotBtn.style.display = "inline-flex";
-    } catch (e) {}
     gameOverOverlay.style.display = "flex";
   } else if (gameOverOverlay) {
-    try {
-      if (saveScreenshotBtn) saveScreenshotBtn.style.display = "none";
-    } catch (e) {}
     gameOverOverlay.style.display = "none";
   }
 
@@ -1852,7 +1854,14 @@ function gameOver(reason) {
     pauseBg();
   } catch (e) {}
 
-  Scoreboard.push({ name: usernameInput?.value?.trim() || "Anonymous", value: score }, currentSpeedLabel);
+  pendingScoreSave = {
+    name: usernameInput?.value?.trim() || "Anonymous",
+    value: score,
+    bucket: currentSpeedLabel,
+  };
+  showEndOverlay(gameOverReason);
+
+  showEndOverlay(gameOverReason);
 }
 
 function gameWon() {
@@ -1872,7 +1881,120 @@ function gameWon() {
     pauseBg();
   } catch (e) {}
 
-  Scoreboard.push({ name: usernameInput?.value?.trim() || "Anonymous", value: score }, currentSpeedLabel);
+  pendingScoreSave = {
+    name: usernameInput?.value?.trim() || "Anonymous",
+    value: score,
+    bucket: currentSpeedLabel,
+  };
+  showEndOverlay(gameOverReason);
+}
+
+function finalizeScoreIfNeeded() {
+  if (!pendingScoreSave) return;
+
+  Scoreboard.push(
+    {
+      name: pendingScoreSave.name,
+      value: pendingScoreSave.value,
+      shots: currentRunShots,
+    },
+    pendingScoreSave.bucket
+  );
+
+  pendingScoreSave = null;
+}
+
+function captureScreenshot() {
+  try {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const out = document.createElement("canvas");
+    out.width = w;
+    out.height = h;
+    const octx = out.getContext("2d");
+
+    octx.fillStyle = "#3a5f2b";
+    octx.fillRect(0, 0, w, h);
+
+    // 1) Draw grass background (always from preloaded image)
+    if (grassReady) {
+      octx.drawImage(grassImage, 0, 0, w, h);
+    } else {
+      octx.fillStyle = "#3a5f2b";
+      octx.fillRect(0, 0, w, h);
+    }
+
+    // 2) Draw game canvas pixels
+    octx.drawImage(canvas, 0, 0);
+
+    // 3) HUD text (score + difficulty)
+    octx.save();
+    octx.font = '16px "Press Start 2P", monospace';
+    octx.fillStyle = "#ffffff";
+    octx.shadowColor = "rgba(0,0,0,0.6)";
+    octx.shadowBlur = 4;
+
+    octx.textBaseline = "top";
+    octx.font = '16px "Press Start 2P", monospace';
+
+    // Left: score
+    octx.fillText(`Score: ${score}`, 14, 14);
+
+    // Right: difficulty
+    const diffText = `Difficulty: ${cap(currentSpeedLabel)}`;
+    const metrics = octx.measureText(diffText);
+    octx.fillText(diffText, w - metrics.width - 14, 14);
+
+    octx.restore();
+
+    return out.toDataURL("image/png");
+  } catch (e) {
+    console.error("Screenshot capture failed", e);
+    return null;
+  }
+}
+
+function showEndOverlay(message) {
+  try {
+    if (!gameOverOverlay) return;
+
+    // Build overlay UI (kept self-contained so we don't depend on extra HTML)
+    const safeMsg = String(message || "Game Over").replace(/[<>]/g, "");
+    gameOverOverlay.innerHTML = `
+      <div class="overlayInner">
+        <h2 class="overlayHeading">${safeMsg}</h2>
+        <div class="overlayActions">
+          <button type="button" class="saveScreenshotBtn">Save Screenshot</button>
+          <span class="saveShotStatus" aria-live="polite"></span>
+        </div>
+      </div>
+    `;
+
+    gameOverOverlay.style.display = "flex";
+    gameOverOverlay.setAttribute("aria-hidden", "false");
+
+    const btn = gameOverOverlay.querySelector(".saveScreenshotBtn");
+    const status = gameOverOverlay.querySelector(".saveShotStatus");
+
+    if (btn) {
+      btn.onclick = () => {
+        const shot = captureScreenshot();
+        if (!shot) {
+          if (status) status.textContent = "Could not capture screenshot.";
+          return;
+        }
+        currentRunShots.push(shot);
+        finalizeScoreIfNeeded();
+        if (status) {
+          btn.disabled = true;
+          btn.textContent = "Screenshot Saved";
+        }
+      };
+    }
+  } catch (e) {
+    console.error("Failed to show end overlay", e);
+  }
 }
 
 // ---- Input ----
@@ -1976,15 +2098,88 @@ startBtn.onclick = () => {
   }
   enterGameScreen();
 };
+
 playAgainBtn.onclick = () => {
+  finalizeScoreIfNeeded();
   if (musicEnabled) playBg({ restart: false });
   enterGameScreen({ restartMusic: false });
 };
-restartBtn.onclick = () => enterStartScreen();
-resetScoreboardBtn.onclick = () => {
-  Scoreboard.reset(currentSpeedLabel);
-  Scoreboard.display(currentSpeedLabel);
+
+restartBtn.onclick = () => {
+  finalizeScoreIfNeeded();
+  hideDifficultyUI();
+  enterStartScreen();
 };
+
+function updateActiveScoreboardDifficulty() {
+  const lbl = getSelectedSpeedLabel();
+  scoreListContainer?.setAttribute("data-difficulty", lbl);
+}
+
+function updateResetScoreboardLabel() {
+  if (!resetScoreboardBtn) return;
+  const lbl = getSelectedSpeedLabel();
+  resetScoreboardBtn.textContent = `Reset ${cap(lbl)} Scores`;
+}
+
+resetScoreboardBtn.onclick = () => {
+  const lbl = getSelectedSpeedLabel();
+  const pretty = cap(lbl);
+
+  const ok = window.confirm(`Reset ${pretty} scores?\n\nThis cannot be undone.`);
+  if (!ok) return;
+
+  Scoreboard.reset(lbl);
+  Scoreboard.display(lbl);
+  updateResetScoreboardState();
+};
+
+function updateResetScoreboardState() {
+  if (!resetScoreboardBtn) return;
+
+  const lbl = getSelectedSpeedLabel();
+  const scores = Scoreboard.load
+    ? Scoreboard.load(lbl)
+    : (() => {
+        try {
+          return JSON.parse(localStorage.getItem(`highScores:${lbl}`)) || [];
+        } catch {
+          return [];
+        }
+      })();
+
+  resetScoreboardBtn.disabled = !scores.length;
+}
+
+// Download screenshots from the scoreboard (click the 📷 icon)
+if (highScoresList) {
+  const downloadShot = (url) => {
+    if (!url || typeof url !== "string") return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `snake-screenshot-${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  highScoresList.addEventListener("click", (e) => {
+    const btn = e.target.closest && e.target.closest(".shotIcon");
+    if (!btn) return;
+    const url = btn.getAttribute("data-shot-url");
+    downloadShot(url);
+  });
+
+  highScoresList.addEventListener("keydown", (e) => {
+    const btn = e.target.closest && e.target.closest(".shotIcon");
+    if (!btn) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const url = btn.getAttribute("data-shot-url");
+      downloadShot(url);
+    }
+  });
+}
 
 if (difficultyPills?.length) {
   difficultyPills.forEach((btn) => {
@@ -2000,13 +2195,13 @@ if (difficultyPills?.length) {
       if (screen === Screens.START) {
         if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
         Scoreboard.display(lbl);
+        updateResetScoreboardState();
       } else if (screen === Screens.GAME) {
         updateSpeedFromUI();
       }
-      // update dynamic bar visuals when user selects a difficulty
-      try {
-        updateDynamicBar();
-      } catch (e) {}
+      updateDynamicBar();
+      updateActiveScoreboardDifficulty();
+      updateResetScoreboardLabel();
     });
   });
 }
@@ -2063,26 +2258,38 @@ function initDynamicBar() {
   } catch (e) {}
 }
 
+function updateDifficultyUIVisibility() {
+  if (!dynamicBarEl || !mainDifficultyLabelEl) return;
+
+  // Only show difficulty UI during active gameplay
+  if (screen !== Screens.GAME) {
+    dynamicBarEl.style.display = "none";
+    mainDifficultyLabelEl.style.display = "none";
+    return;
+  }
+
+  const sel = document.querySelector('.difficultyPill.selected, .difficultyPill[aria-checked="true"]');
+  const isDynamic = sel && String(sel.dataset.ms) === "dynamic";
+
+  if (isDynamic) {
+    dynamicBarEl.style.display = "flex";
+    mainDifficultyLabelEl.style.display = "none";
+  } else {
+    dynamicBarEl.style.display = "none";
+    mainDifficultyLabelEl.style.display = "block";
+  }
+}
+
+function hideDifficultyUI() {
+  if (mainDifficultyLabelEl) mainDifficultyLabelEl.style.display = "none";
+  if (dynamicBarEl) dynamicBarEl.style.display = "none";
+}
+
 function updateDynamicBar() {
   if (!dynamicBarEl) return;
   // Determine currently selected difficulty
   const sel = document.querySelector('.difficultyPill.selected, .difficultyPill[aria-checked="true"]');
   const isDynamic = sel && String(sel.dataset.ms || "").trim() === "dynamic";
-
-  // Visibility rules:
-  // - Easy/Normal/Hard => show ONLY the main label, hide the progress bar
-  // - Dynamic          => show ONLY the progress bar, hide the label
-  const inGame = screen === Screens.GAME;
-  try {
-    if (dynamicBarEl) {
-      dynamicBarEl.style.display = inGame && isDynamic ? "flex" : "none";
-      dynamicBarEl.setAttribute("aria-hidden", inGame && isDynamic ? "false" : "true");
-    }
-    if (mainDifficultyLabelEl) {
-      mainDifficultyLabelEl.style.display = inGame && !isDynamic ? "block" : "none";
-      mainDifficultyLabelEl.setAttribute("aria-hidden", inGame && !isDynamic ? "false" : "true");
-    }
-  } catch (e) {}
   const currentMs = isDynamic ? dynamicStepMs : sel ? Number(sel.dataset.ms) : stepMs;
   const label = (sel && (sel.dataset.label || sel.textContent)) || "—";
   const prettyLabel = String(label).trim();
@@ -2108,6 +2315,7 @@ function updateDynamicBar() {
     });
     if (nearest) nearest.classList.add("active");
   } catch (e) {}
+  updateDifficultyUIVisibility();
 }
 
 function updateSpeedFromUI() {
@@ -2116,6 +2324,7 @@ function updateSpeedFromUI() {
   currentSpeedLabel = label;
   try {
     updateDynamicBar();
+    updateDifficultyUIVisibility();
   } catch (e) {}
 }
 
@@ -2163,6 +2372,7 @@ window.addEventListener("resize", () => {
     });
   } catch (e) {}
   enterStartScreen();
+  updateResetScoreboardState();
   try {
     hide(pauseBtn);
     hide(toggleGridBtn);
@@ -2215,46 +2425,5 @@ window.addEventListener("resize", () => {
   } catch (e) {}
   try {
     initDynamicBar();
-  } catch (e) {}
-
-  // Screenshot evidence wiring
-  try {
-    updateScreenshotDownloadUI();
-  } catch (e) {}
-  try {
-    if (saveScreenshotBtn) {
-      saveScreenshotBtn.addEventListener("click", () => {
-        // capture the raw canvas; overlay text is DOM, intentionally not baked into the image
-        saveScreenshotEvidence(gameOverReason || "");
-        try {
-          saveScreenshotBtn.textContent = "Saved!";
-          setTimeout(() => {
-            try {
-              saveScreenshotBtn.textContent = "Save Screenshot";
-            } catch (e) {}
-          }, 900);
-        } catch (e) {}
-      });
-    }
-    if (downloadScreenshotBtn) {
-      downloadScreenshotBtn.addEventListener("click", () => {
-        const shot = getLastScreenshot();
-        if (!shot || !shot.dataUrl) return;
-        const d = new Date(shot.ts || Date.now());
-        const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}_${String(
-          d.getHours()
-        ).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}${String(d.getSeconds()).padStart(2, "0")}`;
-        const fname = `snake_screenshot_${stamp}.png`;
-        downloadDataUrl(shot.dataUrl, fname);
-      });
-    }
-    if (clearScreenshotBtn) {
-      clearScreenshotBtn.addEventListener("click", () => {
-        try {
-          localStorage.removeItem(SCREENSHOT_KEY);
-        } catch (e) {}
-        updateScreenshotDownloadUI();
-      });
-    }
   } catch (e) {}
 })();
