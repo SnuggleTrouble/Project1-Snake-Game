@@ -24,6 +24,8 @@ const volumePercent = document.querySelector(".volumePercent");
 const pauseBtn = document.querySelector(".pauseBtn");
 const pausedOverlayEl = document.querySelector(".pausedOverlay");
 const scoreCounterEl = document.querySelector(".scoreCounter");
+let pendingScoreSave = null;
+let lastProgressUpdate = 0;
 
 const HUD_FONT_FAMILY = '"Press Start 2P", monospace';
 function setHudFont(px, mono = false) {
@@ -116,6 +118,13 @@ function findSelfCollisionIndex(next, willGrow) {
 }
 
 // ---- Assets ----
+const grassImage = new Image();
+grassImage.src = "./images/grass1.jpeg";
+let grassReady = false;
+grassImage.onload = () => {
+  grassReady = true;
+};
+
 const appleImage = new Image();
 appleImage.src = "./images/apple1.png";
 let appleReady = false;
@@ -537,10 +546,15 @@ function updateProgressUI() {
   } catch (e) {}
 }
 
-function progressLoop() {
-  try {
+function progressLoop(t) {
+  if (!t) t = performance.now();
+
+  if (t - lastProgressUpdate > 250) {
+    // update 4× per second
+    lastProgressUpdate = t;
     updateProgressUI();
-  } catch (e) {}
+  }
+
   progressLoopId = requestAnimationFrame(progressLoop);
 }
 function startProgressLoop() {
@@ -1084,6 +1098,10 @@ let score = 0;
 const SPEED_MULT = 4; // Easy=200ms, Normal=100ms, Hard=60ms
 let currentSpeedLabel = "normal";
 let stepMs = 100;
+// Dynamic difficulty configuration (actual step ms values)
+const DYNAMIC_START_STEP_MS = 200;
+const DYNAMIC_MIN_STEP_MS = 60;
+let dynamicStepMs = DYNAMIC_START_STEP_MS;
 let rafId = null;
 let lastTime = 0;
 let acc = 0;
@@ -1093,6 +1111,9 @@ let dir = { x: 1, y: 0 };
 let dirQueue = []; // up to 2 pending directions
 let hasStarted = false;
 let isGameOver = false;
+// Screenshots captured during the current run (for evidence)
+let currentRunShots = [];
+
 let isPaused = false;
 let gameOverReason = "";
 
@@ -1101,48 +1122,106 @@ const Scoreboard = (() => {
   const KEY = (bucket) => `highScores:${bucket || "all"}`;
   const MAX = 10;
 
+  function normalizeScores(raw) {
+    const arr = Array.isArray(raw) ? raw : [];
+    return arr.map((s) => ({
+      name: (s && s.name) || "Anonymous",
+      value: Number((s && s.value) || 0) || 0,
+      shots: Array.isArray(s && s.shots) ? s.shots.filter(Boolean) : [],
+    }));
+  }
+
   function load(b) {
     try {
-      return JSON.parse(localStorage.getItem(KEY(b))) || [];
+      return normalizeScores(JSON.parse(localStorage.getItem(KEY(b))) || []);
     } catch (e) {
       return [];
     }
   }
+
   function save(scores, b) {
     localStorage.setItem(KEY(b), JSON.stringify(scores));
   }
-  function push({ name, value }, bucket) {
+
+  // Keep screenshots only for the top 3 scores (everything else gets wiped to save space)
+  function enforceTop3Screenshots(scores) {
+    scores.forEach((s, i) => {
+      if (i >= 3 && s && Array.isArray(s.shots) && s.shots.length) s.shots = [];
+      if (i < 3 && s && !Array.isArray(s.shots)) s.shots = [];
+    });
+  }
+
+  function push({ name, value, shots = [] }, bucket) {
     const scores = load(bucket);
-    scores.push({ name: name || "Anonymous", value: Number(value) || 0 });
+    scores.push({
+      name: name || "Anonymous",
+      value: Number(value) || 0,
+      shots: Array.isArray(shots) ? shots.filter(Boolean) : [],
+    });
     scores.sort((a, b) => b.value - a.value);
     scores.splice(MAX);
+    enforceTop3Screenshots(scores);
     save(scores, bucket);
   }
+
   function display(bucket) {
     const scores = load(bucket);
     if (!scores.length) {
       highScoresList.innerHTML = "<li>No high scores yet</li>";
       return;
     }
+
     const medals = ["🥇", "🥈", "🥉"];
+
     highScoresList.innerHTML = scores
       .map((s, i) => {
         const rankBadge = i < 3 ? `<span class="medal">${medals[i]}</span>` : `<span class="badge">${i + 1}</span>`;
+
+        const shotsHtml =
+          s.shots && s.shots.length
+            ? `<span class="shots" aria-label="Screenshots">
+                ${s.shots
+                  .map((url, idx) => {
+                    const safeUrl = escapeAttr(url);
+                    const safeAlt = escapeAttr(`Screenshot ${idx + 1} for ${s.name}`);
+                    return `
+                      <span class="shotIconWrap">
+                        <button class="shotIcon" type="button" data-shot-url="${safeUrl}" aria-label="Download screenshot ${
+                      idx + 1
+                    }">📷</button>
+                        <span class="shotTooltip" role="tooltip" aria-hidden="true">
+                          <img src="${safeUrl}" alt="${safeAlt}" loading="lazy" />
+                        </span>
+                      </span>`;
+                  })
+                  .join("")}
+              </span>`
+            : "";
+
         return `
         <li class="score-row">
           <span class="left">
             ${rankBadge}
             <span class="name">${escapeHtml(s.name)}</span>
           </span>
-          <span class="value">${s.value}</span>
+          <span class="right">
+            <span class="value">${s.value}</span>
+            ${shotsHtml}
+          </span>
         </li>`;
       })
       .join("");
   }
+
   return { push, display, reset: (b) => localStorage.removeItem(KEY(b)) };
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function escapeAttr(s) {
+    // attribute-safe (keeps it simple; data URLs are safe but avoid quotes/brackets)
+    return String(s).replace(/["'<>\n\r]/g, "");
   }
 })();
 
@@ -1209,10 +1288,18 @@ function enterStartScreen() {
   try {
     hide(scoreCounterEl);
   } catch (e) {}
+  try {
+    // ensure dynamic difficulty bar is hidden for screen readers on start
+    if (dynamicBarEl) dynamicBarEl.setAttribute("aria-hidden", "true");
+    if (mainDifficultyLabelEl) mainDifficultyLabelEl.setAttribute("aria-hidden", "true");
+  } catch (e) {}
 
   const lbl = getSelectedSpeedLabel();
   if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
   Scoreboard.display(lbl);
+  updateActiveScoreboardDifficulty();
+  updateResetScoreboardState();
+  updateResetScoreboardLabel();
 }
 
 function enterGameScreen(opts = { restartMusic: true }) {
@@ -1230,14 +1317,35 @@ function enterGameScreen(opts = { restartMusic: true }) {
   document.body.classList.add("screen-game");
   document.body.classList.remove("screen-start");
   document.body.classList.remove("screen-score");
+
+  // Reset end-of-run screenshots
+  currentRunShots = [];
+  try {
+    if (gameOverOverlay) {
+      gameOverOverlay.style.display = "none";
+      gameOverOverlay.setAttribute("aria-hidden", "true");
+      gameOverOverlay.innerHTML = "";
+    }
+  } catch (e) {}
+
   setBodyState(false);
   stopIdleWatch();
 
   updateSpeedFromUI();
+  updateDifficultyUIVisibility();
 
   score = 0;
+  // reset dynamic difficulty to starting value on new game
+  try {
+    dynamicStepMs = DYNAMIC_START_STEP_MS;
+    updateSpeedFromUI();
+  } catch (e) {}
   try {
     if (scoreCounterEl) scoreCounterEl.textContent = `Score: ${score}`;
+  } catch (e) {}
+  try {
+    // ensure the progress bar width matches the visible canvas
+    syncDynamicBarWidth();
   } catch (e) {}
   isGameOver = false;
   gameOverReason = "";
@@ -1288,6 +1396,11 @@ function enterGameScreen(opts = { restartMusic: true }) {
   try {
     if (pauseBtn) pauseBtn.setAttribute("aria-hidden", "false");
   } catch (e) {}
+  try {
+    // expose dynamic difficulty bar and main label to screen readers while in game
+    if (dynamicBarEl) dynamicBarEl.setAttribute("aria-hidden", "false");
+    if (mainDifficultyLabelEl) mainDifficultyLabelEl.setAttribute("aria-hidden", "false");
+  } catch (e) {}
   startLoop();
   try {
     try {
@@ -1309,6 +1422,11 @@ function enterScoreScreen() {
   } catch (e) {}
   try {
     show(scoreCounterEl);
+  } catch (e) {}
+  try {
+    // hide dynamic difficulty bar and main label from screen readers on score screen
+    if (dynamicBarEl) dynamicBarEl.setAttribute("aria-hidden", "true");
+    if (mainDifficultyLabelEl) mainDifficultyLabelEl.setAttribute("aria-hidden", "true");
   } catch (e) {}
   document.body.classList.remove("screen-start");
   document.body.classList.remove("screen-game");
@@ -1383,6 +1501,17 @@ function update() {
 
   if (willGrow) {
     score += 1;
+    try {
+      // If dynamic difficulty selected, make the game slightly faster per food
+      const sel = document.querySelector('.difficultyPill.selected, .difficultyPill[aria-checked="true"]');
+      if (sel && String(sel.dataset.ms || "").trim() === "dynamic") {
+        dynamicStepMs = Math.max(DYNAMIC_MIN_STEP_MS, dynamicStepMs - 1); // increase difficulty (lower ms)
+        updateSpeedFromUI();
+        try {
+          updateDynamicBar();
+        } catch (e) {}
+      }
+    } catch (e) {}
     // update DOM score counter
     try {
       if (scoreCounterEl) scoreCounterEl.textContent = `Score: ${score}`;
@@ -1672,7 +1801,6 @@ function render() {
   }
 
   if (isGameOver && gameOverOverlay) {
-    gameOverOverlay.textContent = `Game Over — ${gameOverReason}`;
     gameOverOverlay.style.display = "flex";
   } else if (gameOverOverlay) {
     gameOverOverlay.style.display = "none";
@@ -1726,7 +1854,14 @@ function gameOver(reason) {
     pauseBg();
   } catch (e) {}
 
-  Scoreboard.push({ name: usernameInput?.value?.trim() || "Anonymous", value: score }, currentSpeedLabel);
+  pendingScoreSave = {
+    name: usernameInput?.value?.trim() || "Anonymous",
+    value: score,
+    bucket: currentSpeedLabel,
+  };
+  showEndOverlay(gameOverReason);
+
+  showEndOverlay(gameOverReason);
 }
 
 function gameWon() {
@@ -1746,7 +1881,120 @@ function gameWon() {
     pauseBg();
   } catch (e) {}
 
-  Scoreboard.push({ name: usernameInput?.value?.trim() || "Anonymous", value: score }, currentSpeedLabel);
+  pendingScoreSave = {
+    name: usernameInput?.value?.trim() || "Anonymous",
+    value: score,
+    bucket: currentSpeedLabel,
+  };
+  showEndOverlay(gameOverReason);
+}
+
+function finalizeScoreIfNeeded() {
+  if (!pendingScoreSave) return;
+
+  Scoreboard.push(
+    {
+      name: pendingScoreSave.name,
+      value: pendingScoreSave.value,
+      shots: currentRunShots,
+    },
+    pendingScoreSave.bucket
+  );
+
+  pendingScoreSave = null;
+}
+
+function captureScreenshot() {
+  try {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const out = document.createElement("canvas");
+    out.width = w;
+    out.height = h;
+    const octx = out.getContext("2d");
+
+    octx.fillStyle = "#3a5f2b";
+    octx.fillRect(0, 0, w, h);
+
+    // 1) Draw grass background (always from preloaded image)
+    if (grassReady) {
+      octx.drawImage(grassImage, 0, 0, w, h);
+    } else {
+      octx.fillStyle = "#3a5f2b";
+      octx.fillRect(0, 0, w, h);
+    }
+
+    // 2) Draw game canvas pixels
+    octx.drawImage(canvas, 0, 0);
+
+    // 3) HUD text (score + difficulty)
+    octx.save();
+    octx.font = '16px "Press Start 2P", monospace';
+    octx.fillStyle = "#ffffff";
+    octx.shadowColor = "rgba(0,0,0,0.6)";
+    octx.shadowBlur = 4;
+
+    octx.textBaseline = "top";
+    octx.font = '16px "Press Start 2P", monospace';
+
+    // Left: score
+    octx.fillText(`Score: ${score}`, 14, 14);
+
+    // Right: difficulty
+    const diffText = `Difficulty: ${cap(currentSpeedLabel)}`;
+    const metrics = octx.measureText(diffText);
+    octx.fillText(diffText, w - metrics.width - 14, 14);
+
+    octx.restore();
+
+    return out.toDataURL("image/png");
+  } catch (e) {
+    console.error("Screenshot capture failed", e);
+    return null;
+  }
+}
+
+function showEndOverlay(message) {
+  try {
+    if (!gameOverOverlay) return;
+
+    // Build overlay UI (kept self-contained so we don't depend on extra HTML)
+    const safeMsg = String(message || "Game Over").replace(/[<>]/g, "");
+    gameOverOverlay.innerHTML = `
+      <div class="overlayInner">
+        <h2 class="overlayHeading">${safeMsg}</h2>
+        <div class="overlayActions">
+          <button type="button" class="saveScreenshotBtn">Save Screenshot</button>
+          <span class="saveShotStatus" aria-live="polite"></span>
+        </div>
+      </div>
+    `;
+
+    gameOverOverlay.style.display = "flex";
+    gameOverOverlay.setAttribute("aria-hidden", "false");
+
+    const btn = gameOverOverlay.querySelector(".saveScreenshotBtn");
+    const status = gameOverOverlay.querySelector(".saveShotStatus");
+
+    if (btn) {
+      btn.onclick = () => {
+        const shot = captureScreenshot();
+        if (!shot) {
+          if (status) status.textContent = "Could not capture screenshot.";
+          return;
+        }
+        currentRunShots.push(shot);
+        finalizeScoreIfNeeded();
+        if (status) {
+          btn.disabled = true;
+          btn.textContent = "Screenshot Saved";
+        }
+      };
+    }
+  } catch (e) {
+    console.error("Failed to show end overlay", e);
+  }
 }
 
 // ---- Input ----
@@ -1850,15 +2098,88 @@ startBtn.onclick = () => {
   }
   enterGameScreen();
 };
+
 playAgainBtn.onclick = () => {
+  finalizeScoreIfNeeded();
   if (musicEnabled) playBg({ restart: false });
   enterGameScreen({ restartMusic: false });
 };
-restartBtn.onclick = () => enterStartScreen();
-resetScoreboardBtn.onclick = () => {
-  Scoreboard.reset(currentSpeedLabel);
-  Scoreboard.display(currentSpeedLabel);
+
+restartBtn.onclick = () => {
+  finalizeScoreIfNeeded();
+  hideDifficultyUI();
+  enterStartScreen();
 };
+
+function updateActiveScoreboardDifficulty() {
+  const lbl = getSelectedSpeedLabel();
+  scoreListContainer?.setAttribute("data-difficulty", lbl);
+}
+
+function updateResetScoreboardLabel() {
+  if (!resetScoreboardBtn) return;
+  const lbl = getSelectedSpeedLabel();
+  resetScoreboardBtn.textContent = `Reset ${cap(lbl)} Scores`;
+}
+
+resetScoreboardBtn.onclick = () => {
+  const lbl = getSelectedSpeedLabel();
+  const pretty = cap(lbl);
+
+  const ok = window.confirm(`Reset ${pretty} scores?\n\nThis cannot be undone.`);
+  if (!ok) return;
+
+  Scoreboard.reset(lbl);
+  Scoreboard.display(lbl);
+  updateResetScoreboardState();
+};
+
+function updateResetScoreboardState() {
+  if (!resetScoreboardBtn) return;
+
+  const lbl = getSelectedSpeedLabel();
+  const scores = Scoreboard.load
+    ? Scoreboard.load(lbl)
+    : (() => {
+        try {
+          return JSON.parse(localStorage.getItem(`highScores:${lbl}`)) || [];
+        } catch {
+          return [];
+        }
+      })();
+
+  resetScoreboardBtn.disabled = !scores.length;
+}
+
+// Download screenshots from the scoreboard (click the 📷 icon)
+if (highScoresList) {
+  const downloadShot = (url) => {
+    if (!url || typeof url !== "string") return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `snake-screenshot-${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  highScoresList.addEventListener("click", (e) => {
+    const btn = e.target.closest && e.target.closest(".shotIcon");
+    if (!btn) return;
+    const url = btn.getAttribute("data-shot-url");
+    downloadShot(url);
+  });
+
+  highScoresList.addEventListener("keydown", (e) => {
+    const btn = e.target.closest && e.target.closest(".shotIcon");
+    if (!btn) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const url = btn.getAttribute("data-shot-url");
+      downloadShot(url);
+    }
+  });
+}
 
 if (difficultyPills?.length) {
   difficultyPills.forEach((btn) => {
@@ -1874,9 +2195,13 @@ if (difficultyPills?.length) {
       if (screen === Screens.START) {
         if (finalScoreHeading) finalScoreHeading.textContent = `Top Scores — ${cap(lbl)}`;
         Scoreboard.display(lbl);
+        updateResetScoreboardState();
       } else if (screen === Screens.GAME) {
         updateSpeedFromUI();
       }
+      updateDynamicBar();
+      updateActiveScoreboardDifficulty();
+      updateResetScoreboardLabel();
     });
   });
 }
@@ -1884,20 +2209,143 @@ if (difficultyPills?.length) {
 function readDifficultyFromPills() {
   const sel = document.querySelector(".difficultyPill.selected, .difficultyPill[aria-checked='true']");
   if (!sel) return { ms: 25, label: "normal" };
-  const ms = Number(sel.dataset.ms);
+  const raw = String(sel.dataset.ms || "").trim();
   const label = (sel.dataset.label || sel.textContent || "normal").trim().toLowerCase();
+  if (raw === "dynamic") {
+    return { ms: dynamicStepMs / SPEED_MULT, label };
+  }
+  const ms = Number(raw);
   return { ms: Number.isFinite(ms) ? ms : 25, label };
+}
+
+// Dynamic difficulty progress bar helpers
+const BAR_MAX_MS = 180;
+const BAR_MIN_MS = 60;
+const BAR_THRESHOLDS = [
+  { label: "Easy", ms: 180 },
+  { label: "Normal", ms: 120 },
+  { label: "Hard", ms: 60 },
+];
+let dynamicBarEl = null;
+let dynamicBarFill = null;
+let dynamicBarTicks = null;
+let dynamicBarLabel = null;
+let mainDifficultyLabelEl = null;
+
+function initDynamicBar() {
+  dynamicBarEl = document.querySelector(".dynamicBar");
+  if (!dynamicBarEl) return;
+  dynamicBarFill = dynamicBarEl.querySelector(".dynamicBar__fill");
+  dynamicBarTicks = dynamicBarEl.querySelector(".dynamicBar__ticks");
+  // dynamicBarLabel is now a stand-alone element below the canvas
+  mainDifficultyLabelEl = document.querySelector(".mainDifficultyLabel");
+  // create ticks
+  dynamicBarTicks.innerHTML = "";
+  BAR_THRESHOLDS.forEach((t) => {
+    const el = document.createElement("div");
+    el.className = "tick";
+    const pct = ((BAR_MAX_MS - t.ms) / (BAR_MAX_MS - BAR_MIN_MS)) * 100;
+    el.style.left = `${pct}%`;
+    el.dataset.ms = String(t.ms);
+    el.innerHTML = `<div class="dot"></div><div class="txt">${t.label}</div>`;
+    dynamicBarTicks.appendChild(el);
+  });
+  updateDynamicBar();
+
+  // ensure bar width still matches canvas after ticks constructed
+  try {
+    syncDynamicBarWidth();
+  } catch (e) {}
+}
+
+function updateDifficultyUIVisibility() {
+  if (!dynamicBarEl || !mainDifficultyLabelEl) return;
+
+  // Only show difficulty UI during active gameplay
+  if (screen !== Screens.GAME) {
+    dynamicBarEl.style.display = "none";
+    mainDifficultyLabelEl.style.display = "none";
+    return;
+  }
+
+  const sel = document.querySelector('.difficultyPill.selected, .difficultyPill[aria-checked="true"]');
+  const isDynamic = sel && String(sel.dataset.ms) === "dynamic";
+
+  if (isDynamic) {
+    dynamicBarEl.style.display = "flex";
+    mainDifficultyLabelEl.style.display = "none";
+  } else {
+    dynamicBarEl.style.display = "none";
+    mainDifficultyLabelEl.style.display = "block";
+  }
+}
+
+function hideDifficultyUI() {
+  if (mainDifficultyLabelEl) mainDifficultyLabelEl.style.display = "none";
+  if (dynamicBarEl) dynamicBarEl.style.display = "none";
+}
+
+function updateDynamicBar() {
+  if (!dynamicBarEl) return;
+  // Determine currently selected difficulty
+  const sel = document.querySelector('.difficultyPill.selected, .difficultyPill[aria-checked="true"]');
+  const isDynamic = sel && String(sel.dataset.ms || "").trim() === "dynamic";
+  const currentMs = isDynamic ? dynamicStepMs : sel ? Number(sel.dataset.ms) : stepMs;
+  const label = (sel && (sel.dataset.label || sel.textContent)) || "—";
+  const prettyLabel = String(label).trim();
+  const displayLabel = prettyLabel && prettyLabel !== "—" ? prettyLabel.charAt(0).toUpperCase() + prettyLabel.slice(1).toLowerCase() : "—";
+  // compute fill percent across BAR_MIN..BAR_MAX
+  const pct = Math.max(0, Math.min(100, ((BAR_MAX_MS - currentMs) / (BAR_MAX_MS - BAR_MIN_MS)) * 100));
+  dynamicBarFill.style.width = `${pct}%`;
+  if (dynamicBarLabel) dynamicBarLabel.textContent = displayLabel;
+  if (mainDifficultyLabelEl) mainDifficultyLabelEl.textContent = displayLabel;
+  // highlight nearest threshold tick
+  try {
+    const ticks = Array.from(dynamicBarTicks.querySelectorAll(".tick"));
+    let nearest = null;
+    let bestDiff = Infinity;
+    ticks.forEach((t) => {
+      const tv = Number(t.dataset.ms);
+      const diff = Math.abs(currentMs - tv);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        nearest = t;
+      }
+      t.classList.remove("active");
+    });
+    if (nearest) nearest.classList.add("active");
+  } catch (e) {}
+  updateDifficultyUIVisibility();
 }
 
 function updateSpeedFromUI() {
   const { ms, label } = readDifficultyFromPills();
   stepMs = ms * SPEED_MULT;
   currentSpeedLabel = label;
+  try {
+    updateDynamicBar();
+    updateDifficultyUIVisibility();
+  } catch (e) {}
 }
 
 function getSelectedSpeedLabel() {
   return readDifficultyFromPills().label;
 }
+
+// ---- Helpers ----
+let __dynBarResizeTimeout = null;
+function syncDynamicBarWidth() {
+  if (!dynamicBarEl || !canvas) return;
+  try {
+    const rect = canvas.getBoundingClientRect();
+    // Set exact width to match canvas display width
+    dynamicBarEl.style.width = `${Math.round(rect.width)}px`;
+  } catch (e) {}
+}
+window.addEventListener("resize", () => {
+  clearTimeout(__dynBarResizeTimeout);
+  __dynBarResizeTimeout = setTimeout(syncDynamicBarWidth, 120);
+});
 
 // ---- Boot ----
 (function boot() {
@@ -1924,6 +2372,7 @@ function getSelectedSpeedLabel() {
     });
   } catch (e) {}
   enterStartScreen();
+  updateResetScoreboardState();
   try {
     hide(pauseBtn);
     hide(toggleGridBtn);
@@ -1973,5 +2422,8 @@ function getSelectedSpeedLabel() {
   } catch (e) {}
   try {
     pauseBtn && pauseBtn.addEventListener("click", toggleGamePause);
+  } catch (e) {}
+  try {
+    initDynamicBar();
   } catch (e) {}
 })();
