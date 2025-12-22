@@ -223,21 +223,7 @@ function toggleMusicEnabled(shouldEnable) {
   updateMusicToggleUI();
   try {
     if (musicEnabled) {
-      try {
-        ensureAudioContext();
-      } catch (e) {
-        console.error("ensureAudioContext failed in toggleMusicEnabled", e);
-      }
-      try {
-        if (audioContext && audioContext.state === "suspended") {
-          audioContext
-            .resume()
-            .then(() => console.debug("audioContext resumed via toggleMusicEnabled"))
-            .catch((e) => console.error("audioContext resume failed (toggleMusic)", e));
-        }
-      } catch (e) {
-        console.error("audioContext resume attempt failed (toggleMusic)", e);
-      }
+      resumeAudioContext("toggleMusicEnabled");
       if (document.body.classList.contains("screen-start")) {
         if (START_TRACK && START_TRACK.paused) playStartMusic({ restart: false });
       } else {
@@ -294,6 +280,20 @@ function ensureAudioContext() {
     } catch (e) {}
   }
   return audioContext;
+}
+
+function resumeAudioContext(source) {
+  try {
+    ensureAudioContext();
+    if (audioContext && audioContext.state === "suspended") {
+      audioContext
+        .resume()
+        .then(() => console.debug(`audioContext resumed via ${source}`))
+        .catch((e) => console.error(`audioContext resume failed (${source})`, e));
+    }
+  } catch (e) {
+    console.error(`ensureAudioContext/resume failed (${source})`, e);
+  }
 }
 
 function applyMasterVolume() {
@@ -412,21 +412,7 @@ function attemptUnlockAudioOnce() {
   function unlock() {
     if (audioUnlocked) return;
     audioUnlocked = true;
-    try {
-      ensureAudioContext();
-    } catch (e) {
-      console.error("ensureAudioContext failed during unlock", e);
-    }
-    try {
-      if (audioContext && audioContext.state === "suspended") {
-        audioContext
-          .resume()
-          .then(() => console.debug("audioContext resumed via unlock gesture"))
-          .catch((e) => console.error("audioContext.resume failed during unlock", e));
-      }
-    } catch (e) {
-      console.error("audioContext resume exception during unlock:", e);
-    }
+    resumeAudioContext("unlock gesture");
     try {
       if (musicEnabled) {
         if (document.body.classList.contains("screen-start")) {
@@ -594,17 +580,7 @@ function togglePlayPause() {
       console.error("Failed to auto-enable music in togglePlayPause", e);
     }
   }
-  try {
-    ensureAudioContext();
-    if (audioContext && audioContext.state === "suspended") {
-      audioContext
-        .resume()
-        .then(() => console.debug("audioContext resumed via togglePlayPause"))
-        .catch((e) => console.error("audioContext resume failed (togglePlayPause)", e));
-    }
-  } catch (e) {
-    console.error("ensureAudioContext/resume failed in togglePlayPause", e);
-  }
+  resumeAudioContext("togglePlayPause");
   if (document.body.classList.contains("screen-start")) {
     if (START_TRACK && !START_TRACK.paused) pauseStartMusic();
     else playStartMusic({ restart: false });
@@ -1838,39 +1814,28 @@ function spawnFood() {
 }
 
 function gameOver(reason) {
-  try {
-    Sounds.gameOver.currentTime = 0;
-    Sounds.gameOver.play().catch(() => {});
-  } catch (e) {}
-  isGameOver = true;
-  gameOverReason = reason || "Game Over";
-
-  show(playAgainBtn);
-  show(restartBtn);
-  show(toggleGridBtn);
-  show(volumeControl);
-  hide(scoreListContainer);
-  try {
-    pauseBg();
-  } catch (e) {}
-
-  pendingScoreSave = {
-    name: usernameInput?.value?.trim() || "Anonymous",
-    value: score,
-    bucket: currentSpeedLabel,
-  };
-  showEndOverlay(gameOverReason);
-
-  showEndOverlay(gameOverReason);
+  handleGameEnd({
+    reason: reason || "Game Over",
+    sound: Sounds.gameOver,
+  });
 }
 
 function gameWon() {
+  handleGameEnd({
+    reason: "You won!",
+    sound: Sounds.gameWon,
+  });
+}
+
+function handleGameEnd({ reason, sound }) {
   try {
-    Sounds.gameWon.currentTime = 0;
-    Sounds.gameWon.play().catch(() => {});
+    if (sound) {
+      sound.currentTime = 0;
+      sound.play().catch(() => {});
+    }
   } catch (e) {}
   isGameOver = true;
-  gameOverReason = "You won!";
+  gameOverReason = reason || "Game Over";
 
   show(playAgainBtn);
   show(restartBtn);
@@ -2085,17 +2050,7 @@ startBtn.onclick = () => {
     updateStartButtonState();
     return; // don’t start without a name
   }
-  try {
-    ensureAudioContext();
-    if (audioContext && audioContext.state === "suspended") {
-      audioContext
-        .resume()
-        .then(() => console.debug("audioContext resumed via start button"))
-        .catch((e) => console.error("audioContext resume failed (start button)", e));
-    }
-  } catch (e) {
-    console.error("ensureAudioContext/resume via start btn failed", e);
-  }
+  resumeAudioContext("start button");
   enterGameScreen();
 };
 
