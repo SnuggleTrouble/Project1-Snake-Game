@@ -28,10 +28,13 @@ let pendingScoreSave = null;
 let lastProgressUpdate = 0;
 
 const HUD_FONT_FAMILY = '"Press Start 2P", monospace';
+// Centralized HUD font helper so all score/overlay text stays consistent.
 function setHudFont(px, mono = false) {
   const fam = mono ? '"Press Start 2P", monospace' : HUD_FONT_FAMILY;
-  ctx.font = `${px}px ${fam}`;
+  const font = `${px}px ${fam}`;
+  ctx.font = font;
   ctx.textBaseline = "top";
+  return font;
 }
 
 // --- Debug state ---
@@ -1837,11 +1840,15 @@ function spawnFood() {
   food = { x, y };
 }
 
-function gameOver(reason) {
+// Shared end-of-run flow (game over / win) to keep UI + score logic consistent.
+function endRun({ reason, sound }) {
   try {
-    Sounds.gameOver.currentTime = 0;
-    Sounds.gameOver.play().catch(() => {});
+    if (sound) {
+      sound.currentTime = 0;
+      sound.play().catch(() => {});
+    }
   } catch (e) {}
+
   isGameOver = true;
   gameOverReason = reason || "Game Over";
 
@@ -1850,6 +1857,7 @@ function gameOver(reason) {
   show(toggleGridBtn);
   show(volumeControl);
   hide(scoreListContainer);
+
   try {
     pauseBg();
   } catch (e) {}
@@ -1859,34 +1867,16 @@ function gameOver(reason) {
     value: score,
     bucket: currentSpeedLabel,
   };
-  showEndOverlay(gameOverReason);
 
   showEndOverlay(gameOverReason);
 }
 
+function gameOver(reason) {
+  endRun({ reason: reason || "Game Over", sound: Sounds.gameOver });
+}
+
 function gameWon() {
-  try {
-    Sounds.gameWon.currentTime = 0;
-    Sounds.gameWon.play().catch(() => {});
-  } catch (e) {}
-  isGameOver = true;
-  gameOverReason = "You won!";
-
-  show(playAgainBtn);
-  show(restartBtn);
-  show(toggleGridBtn);
-  show(volumeControl);
-  hide(scoreListContainer);
-  try {
-    pauseBg();
-  } catch (e) {}
-
-  pendingScoreSave = {
-    name: usernameInput?.value?.trim() || "Anonymous",
-    value: score,
-    bucket: currentSpeedLabel,
-  };
-  showEndOverlay(gameOverReason);
+  endRun({ reason: "You won!", sound: Sounds.gameWon });
 }
 
 function finalizeScoreIfNeeded() {
