@@ -1250,6 +1250,12 @@ body.screen-game .gameFooter {
   display: block;
 }
 
+@media (max-height: 720px) {
+  .gameFooter {
+    display: none !important;
+  }
+}
+
 a {
   color: #ffd580;
   text-decoration: none;
