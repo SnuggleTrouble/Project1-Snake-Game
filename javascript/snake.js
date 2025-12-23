@@ -28,10 +28,13 @@ let pendingScoreSave = null;
 let lastProgressUpdate = 0;
 
 const HUD_FONT_FAMILY = '"Press Start 2P", monospace';
+// Centralized HUD font helper so all score/overlay text stays consistent.
 function setHudFont(px, mono = false) {
   const fam = mono ? '"Press Start 2P", monospace' : HUD_FONT_FAMILY;
-  ctx.font = `${px}px ${fam}`;
+  const font = `${px}px ${fam}`;
+  ctx.font = font;
   ctx.textBaseline = "top";
+  return font;
 }
 
 // --- Debug state ---
@@ -1845,13 +1848,43 @@ function handleGameEnd({ reason, sound }) {
   try {
     pauseBg();
   } catch (e) {}
+// Shared end-of-run flow (game over / win) to keep UI + score logic consistent.
+function endRun({ reason, sound }) {
+  try {
+    if (sound) {
+      sound.currentTime = 0;
+      sound.play().catch(() => {});
+    }
+  } catch (e) {}
+
+  isGameOver = true;
+  gameOverReason = reason || "Game Over";
+
+  show(playAgainBtn);
+  show(restartBtn);
+  show(toggleGridBtn);
+  show(volumeControl);
+  hide(scoreListContainer);
+
+  try {
+    pauseBg();
+  } catch (e) {}
 
   pendingScoreSave = {
     name: usernameInput?.value?.trim() || "Anonymous",
     value: score,
     bucket: currentSpeedLabel,
   };
+
   showEndOverlay(gameOverReason);
+}
+
+function gameOver(reason) {
+  endRun({ reason: reason || "Game Over", sound: Sounds.gameOver });
+}
+
+function gameWon() {
+  endRun({ reason: "You won!", sound: Sounds.gameWon });
 }
 
 function finalizeScoreIfNeeded() {
