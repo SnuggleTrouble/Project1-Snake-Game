@@ -1212,6 +1212,8 @@ function enterStartScreen() {
     if (gameOverOverlay) {
       try {
         gameOverOverlay.style.display = "none";
+        gameOverOverlay.setAttribute("aria-hidden", "true");
+        gameOverOverlay.innerHTML = "";
       } catch (e) {}
     }
   } catch (e) {}
@@ -1779,7 +1781,7 @@ function render() {
     startInstructionsOverlay.style.display = "none";
   }
 
-  if (isGameOver && gameOverOverlay) {
+  if (isGameOver && screen === Screens.GAME && gameOverOverlay) {
     gameOverOverlay.style.display = "flex";
   } else if (gameOverOverlay) {
     gameOverOverlay.style.display = "none";
@@ -1816,39 +1818,6 @@ function spawnFood() {
   food = { x, y };
 }
 
-function gameOver(reason) {
-  handleGameEnd({
-    reason: reason || "Game Over",
-    sound: Sounds.gameOver,
-  });
-}
-
-function gameWon() {
-  handleGameEnd({
-    reason: "You won!",
-    sound: Sounds.gameWon,
-  });
-}
-
-function handleGameEnd({ reason, sound }) {
-  try {
-    if (sound) {
-      sound.currentTime = 0;
-      sound.play().catch(() => {});
-    }
-  } catch (e) {}
-  isGameOver = true;
-  gameOverReason = reason || "Game Over";
-
-  show(playAgainBtn);
-  show(restartBtn);
-  show(toggleGridBtn);
-  show(volumeControl);
-  hide(scoreListContainer);
-  try {
-    pauseBg();
-  } catch (e) {}
-// Shared end-of-run flow (game over / win) to keep UI + score logic consistent.
 function endRun({ reason, sound }) {
   try {
     if (sound) {
